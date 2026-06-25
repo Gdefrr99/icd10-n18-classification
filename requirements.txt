@@ -1,0 +1,30 @@
+# Core ML / NLP
+torch>=2.1.0
+transformers>=4.40.0
+datasets>=2.18.0
+tokenizers>=0.15.0
+accelerate>=0.27.0
+captum>=0.7.0          # Integrated Gradients / Noise Tunnel
+
+# Classical baseline
+scikit-learn>=1.4.0
+rank-bm25>=0.2.2
+scipy>=1.12.0
+joblib>=1.3.0
+
+# Clinical NLP preprocessing
+scispacy>=0.5.4
+# Download the model separately:
+#   pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_sm-0.5.4.tar.gz
+
+# Multi-label stratified splitting
+iterstrat>=0.1.7
+scikit-multilearn>=0.2.0
+
+# Data handling & metrics
+pandas>=2.1.0
+numpy>=1.26.0
+rouge-score>=0.1.2
+matplotlib>=3.8.0
+seaborn>=0.13.0
+tqdm>=4.66.0

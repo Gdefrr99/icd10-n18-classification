@@ -1,0 +1,12 @@
+# Additional requirements for MedGemma-27b-it summarization
+# Install on top of requirements.txt
+
+# bfloat16 / multi-GPU inference
+bitsandbytes>=0.43.0
+
+# Hugging Face hub access
+huggingface-hub>=0.22.0
+
+# MedGemma requires access approval at:
+# https://huggingface.co/google/medgemma-27b-it
+# Log in with: huggingface-cli login

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Clinical note summarization using MedGemma-27b-it.
+Resumen clínico de notas de alta mediante MedGemma-27B-it (Sección 4.5.3).
 
-Requires:
+Requiere:
   - pip install -r requirements_generative.txt
-  - huggingface-cli login  (MedGemma requires gated access approval)
-  - ~40 GB GPU VRAM (bfloat16); two A100 40 GB or one A100 80 GB.
+  - huggingface-cli login  (MedGemma requiere aprobación de acceso)
+  - ~40 GB de VRAM (bfloat16); dos A100 40 GB o una A100 80 GB.
 
-Usage:
-    python 6_summarization/summarize_medgemma.py \
+Uso:
+    python 5_summarization/summarize_medgemma.py \
         --input_csv  data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
         --output_csv data/processed/ehr_n18_summarized.csv
 """
@@ -44,6 +44,9 @@ SYSTEM_PROMPT = (
     "Do NOT assign ICD-10 codes yourself. Only summarize."
 )
 
+# El prompt del sistema se mantiene en inglés: es el idioma de las notas de
+# MIMIC-IV y de los modelos de resumen evaluados (Anexo A.3 de la memoria).
+
 GENERATION_KWARGS = dict(
     max_new_tokens=512,
     temperature=0.2,
@@ -57,13 +60,14 @@ MIN_SUMMARY_WORDS = 20
 
 
 def is_valid_summary(text: str) -> bool:
-    """Heuristic filter: reject empty, code-containing, or too-short responses."""
+    """Heurística de filtrado: rechaza respuestas vacías, demasiado cortas o
+    que contienen directamente códigos ICD-10 (Sección 4.5.4)."""
     if not text or not isinstance(text, str):
         return False
     words = text.strip().split()
     if len(words) < MIN_SUMMARY_WORDS:
         return False
-    # Reject if model leaked ICD codes (e.g. "N18.3", "E11.9")
+    # Rechazar si el modelo ha filtrado códigos ICD (p. ej. "N18.3", "E11.9")
     import re
     if re.search(r'\b[A-Z]\d{2}\.?\d*\b', text):
         return False
@@ -85,10 +89,11 @@ def main():
     parser.add_argument("--input_csv",  required=True)
     parser.add_argument("--output_csv", required=True)
     parser.add_argument("--model",      default="google/medgemma-27b-it")
-    parser.add_argument("--max_retries", type=int, default=2)
+    parser.add_argument("--max_retries", type=int, default=2,
+                        help="Reintentos con semilla de generación distinta ante una respuesta inválida")
     args = parser.parse_args()
 
-    print(f"Loading model: {args.model}")
+    print(f"Cargando modelo: {args.model}")
     pipe = pipeline(
         "image-text-to-text",
         model=args.model,
@@ -104,14 +109,14 @@ def main():
     output_path = Path(args.output_csv)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Resume from checkpoint if output file exists
+    # Reanudación desde checkpoint si el archivo de salida ya existe
     if output_path.exists():
         df_saved = pd.read_csv(output_path)
         df["summary"] = df_saved["summary"]
-        print(f"Resuming: {df['summary'].notna().sum()} / {len(df)} already done.")
+        print(f"Reanudando: {df['summary'].notna().sum()} / {len(df)} notas ya procesadas.")
 
     pending = df[df["summary"].isna()].index.tolist()
-    print(f"Summarizing {len(pending)} notes...")
+    print(f"Resumiendo {len(pending)} notas...")
 
     for idx in tqdm(pending):
         note = df.at[idx, "text"]
@@ -125,17 +130,17 @@ def main():
                 else:
                     torch.manual_seed(42 + attempt + 1)
             except Exception as e:
-                print(f"  Error on row {idx}, attempt {attempt}: {e}")
+                print(f"  Error en la fila {idx}, intento {attempt}: {e}")
         df.at[idx, "summary"] = summary
 
-        # Save checkpoint every 50 notes
+        # Guardado incremental cada 50 notas
         if (pending.index(idx) + 1) % 50 == 0:
             df.to_csv(output_path, index=False)
 
     df.to_csv(output_path, index=False)
     valid = df["summary"].notna().sum()
-    print(f"Done. Valid summaries: {valid} / {len(df)} ({100*valid/len(df):.1f}%)")
-    print(f"Output saved → {output_path}")
+    print(f"Hecho. Resúmenes válidos: {valid} / {len(df)} ({100*valid/len(df):.1f}%)")
+    print(f"Salida guardada -> {output_path}")
 
 
 if __name__ == "__main__":

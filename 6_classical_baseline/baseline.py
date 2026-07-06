@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Classical multi-label baseline for N18 ICD-10-CM classification.
+Línea base clásica multietiqueta para la clasificación ICD-10-CM del
+subgrupo N18 (Sección 4.6 de la memoria).
 
-Representations: TF-IDF, BM25, BM25+
-Classifiers:     Logistic Regression, LinearSVC (One-vs-Rest)
-Vocabulary:      Multiple configurations (36K, 50K, 53K, 103K, 930K features)
+Representaciones: TF-IDF, BM25, BM25+
+Clasificadores:   Regresión Logística, LinearSVC (One-vs-Rest)
+Vocabulario:      Varias configuraciones (36K, 50K, 53K, 103K, 930K características)
 
-Preprocessing:
-  - Lowercasing + punctuation removal
-  - Lemmatization via scispaCy en_core_sci_sm
-  - Stop word removal (standard + clinical extensions)
-  - Removal of 1-2 char tokens and pure numeric strings
+Preprocesado adicional:
+  - Minúsculas + eliminación de puntuación
+  - Lematización con scispaCy en_core_sci_sm
+  - Eliminación de stop words (estándar + extensión clínica)
+  - Eliminación de tokens de 1-2 caracteres y cadenas numéricas puras
 
-Usage:
-    python 7_classical_baseline/baseline.py \
+Uso:
+    python 6_classical_baseline/baseline.py \
         --data_dir   data/processed/ \
         --output_dir results/baseline/
 """

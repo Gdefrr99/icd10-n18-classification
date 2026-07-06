@@ -1,380 +1,279 @@
-# ICD-10-CM Automatic Coding — CKD Subgroup N18
+# Codificación automática ICD-10-CM — Subgrupo ERC (N18)
 
-Replication repository for the experimental pipeline described in the Bachelor's Thesis *"Sistema de Codificación Automática ICD-10-CM en Grupos de Riesgo CMS-HCC"* (Universidad de León, 2026).
+Repositorio de reproducibilidad del pipeline experimental descrito en el Trabajo Fin de Grado *"Sistema de Codificación Automática ICD-10-CM en Grupos de Riesgo CMS-HCC"* (Universidad de León, 2026).
 
-The experiments focus on multi-label classification of the **Chronic Kidney Disease (CKD) subgroup N18** of ICD-10-CM (7 codes: N18.1–N18.6, N18.9) using clinical discharge summaries from **MIMIC-IV**.
+Los experimentos se centran en la clasificación multietiqueta del subgrupo **Enfermedad Renal Crónica (ERC) N18** de ICD-10-CM (7 códigos: N18.1–N18.6, N18.9) a partir de notas de alta clínicas de **MIMIC-IV**.
 
-> **Deployment note.** The two best-performing models from this pipeline are integrated into the [icd10_system](https://github.com/Gdefrr99/icd10_system) clinical coding assistant:
-> - **Segmentation pipeline**: `PubMedBERT_abstract`, threshold 0.6, Max Pooling.
-> - **Summarization pipeline**: `BioLinkBERT-large`, threshold 0.4, trained on notes summarized by MedGemma-27B-it.
-
----
-
-## Table of Contents
-
-1. [Dataset acquisition](#1-dataset-acquisition)
-2. [Building the N18 working set](#2-building-the-n18-working-set)
-3. [Repository structure](#3-repository-structure)
-4. [Step-by-step pipeline](#4-step-by-step-pipeline)
-5. [Hardware requirements](#5-hardware-requirements)
-6. [Results](#6-results)
-7. [Citation](#7-citation)
+> **Nota de despliegue.** Los dos modelos con mejor rendimiento de este pipeline están integrados en el asistente de codificación clínica [icd10_system](https://github.com/Gdefrr99/icd10_system):
+> - **Pipeline de segmentación**: `PubMedBERT_abstract`, umbral 0,6, Max Pooling.
+> - **Pipeline de resumen**: `BioLinkBERT-large`, umbral 0,4, entrenado sobre notas resumidas por MedGemma-27B-it.
 
 ---
 
-## 1. Dataset acquisition
+## Índice
 
-Access to MIMIC-IV requires a PhysioNet credentialed account. **No data is included in this repository.**
-
-1. Create an account at [physionet.org](https://physionet.org).
-2. Complete the required CITI training courses and sign the data use agreement.
-3. Download MIMIC-IV (v2.2 or later) from [physionet.org/content/mimiciv](https://physionet.org/content/mimiciv/).
-4. From the downloaded archive, you need exactly two files:
-   - `hosp/diagnoses_icd.csv.gz` — ICD codes per admission.
-   - `note/discharge.csv.gz` — Discharge summary text per admission.
-
-Decompress `discharge.csv.gz`. Then put `diagnoses_icd.csv.gz` and `discharge.csv` files into `data/raw/`.
+1. [Obtención del dataset](#1-obtención-del-dataset)
+2. [Construcción del conjunto de trabajo N18](#2-construcción-del-conjunto-de-trabajo-n18)
+3. [Estructura del repositorio](#3-estructura-del-repositorio)
+4. [Pipeline paso a paso](#4-pipeline-paso-a-paso)
+5. [Requisitos de hardware](#5-requisitos-de-hardware)
+6. [Resultados](#6-resultados)
+7. [Cita](#7-cita)
 
 ---
 
-## 2. Building the N18 working set
+## 1. Obtención del dataset
 
-Run the preprocessing pipeline (see [1_preprocessing/](1_preprocessing/README.md)) to:
+El acceso a MIMIC-IV requiere una cuenta acreditada de PhysioNet. **Este repositorio no incluye ningún dato.**
 
-1. Join `diagnoses_icd` and `discharge` on `(subject_id, hadm_id)`.
-2. Filter to `icd_version = 10` only (ICD-10-CM records).
-3. Filter to notes containing at least one N18.x code → **23,358 notes**, 7 labels.
-4. Apply clinical text normalization (abbreviation expansion, hard-wrap restoration, section tagging).
-5. Stratified split 70/10/20 % → train / validation / test.
+1. Crear una cuenta en [physionet.org](https://physionet.org).
+2. Completar los cursos CITI requeridos y firmar el acuerdo de uso de datos.
+3. Descargar MIMIC-IV (v2.2 o posterior) desde [physionet.org/content/mimiciv](https://physionet.org/content/mimiciv/).
+4. Del archivo descargado solo se necesitan dos ficheros:
+   - `hosp/diagnoses_icd.csv.gz` — códigos ICD por ingreso.
+   - `note/discharge.csv.gz` — texto de las notas de alta por ingreso.
+
+Ambos archivos pueden usarse **tal cual, en formato `.csv.gz`**: el script de preprocesado infiere la compresión a partir de la extensión, por lo que no es necesario descomprimirlos manualmente. Basta con colocarlos en `data/raw/`.
+
+---
+
+## 2. Construcción del conjunto de trabajo N18
+
+Ejecutar el pipeline de preprocesado (ver [1_preprocessing/](1_preprocessing/README.md)) para:
+
+1. Cruzar `diagnoses_icd` y `discharge` mediante `(subject_id, hadm_id)`.
+2. Filtrar a `icd_version = 10` (registros ICD-10-CM) → **122.288 notas** (dataset completo, usado también en el Paso 3).
+3. Filtrar a notas con al menos un código N18.x → **23.358 notas**, 7 etiquetas.
+4. Aplicar la normalización de texto clínico (expansión de abreviaturas, restauración de hard-wrap, marcado de secciones).
+5. Partición estratificada 70/10/20 % → train / validación / test.
 
 ```
 data/
 └── raw/
-    ├── diagnoses_icd.csv.gz          # from MIMIC-IV hosp module
-    └── discharge.csv              # from MIMIC-IV note module
+    ├── diagnoses_icd.csv.gz          # módulo hosp de MIMIC-IV
+    └── discharge.csv.gz              # módulo note de MIMIC-IV
 ```
 
-The preprocessing script writes the following files consumed by all downstream steps:
+Los archivos que produce el script y que consumen el resto de pasos:
 
 ```
 data/processed/
-├── diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv   # full N18 dataset (23,358 rows)
-├── ehr_icd_train_clean.csv                                 # 16,351 rows
-├── ehr_icd_val_clean.csv                                   #  2,337 rows
-└── ehr_icd_test_clean.csv                                  #  4,670 rows
+├── diagnoses_icd10.csv                                     # dataset completo ICD-10-CM (122.288 filas)
+├── diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv   # dataset N18 completo (23.358 filas)
+├── ehr_icd_train_clean.csv                                 # 16.351 filas
+├── ehr_icd_val_clean.csv                                   #  2.337 filas
+└── ehr_icd_test_clean.csv                                  #  4.670 filas
 ```
 
-Each CSV has columns: `subject_id`, `hadm_id`, `text` (preprocessed), `icd_code` (list of N18.x codes as a Python literal string).
+Cada CSV tiene las columnas: `subject_id`, `hadm_id`, `text` (preprocesado), `icd_code` (lista de códigos como literal de Python).
 
 ---
 
-## 3. Repository structure
+## 3. Estructura del repositorio
 
 ```
 icd10-n18-classification/
-├── README.md                        ← this file
-├── requirements.txt                 ← Transformer + classical baseline deps
-├── requirements_generative.txt      ← extra deps for MedGemma summarization
+├── README.md                        ← este archivo
+├── requirements.txt                 ← dependencias de Transformers + línea base clásica
+├── requirements_generative.txt      ← dependencias extra para el resumen con MedGemma
 ├── .gitignore
 │
 ├── data/
-│   └── README.md                    ← acquisition & build instructions
+│   └── README.md                    ← instrucciones de obtención y construcción
 │
 ├── 1_preprocessing/
 │   ├── README.md
-│   └── preprocess.py                ← build processed CSVs from raw MIMIC-IV
+│   └── preprocess.py                ← construye los CSV procesados a partir de MIMIC-IV
 │
-├── 2_eda/
-│   └── README.md                    ← EDA description & figures
-│
-├── 3_llm_hcc_evaluation/
+├── 2_llm_hcc_evaluation/
 │   ├── README.md
-│   └── gemini_flash_evaluation.py   ← Gemini 2.5 Flash batch evaluation
+│   ├── hcc_groups.py                ← definición de los 13 grupos de riesgo CMS-HCC
+│   ├── build_batches.py             ← genera los lotes para pegar en gemini.google.com
+│   └── score_jaccard.py             ← puntúa las respuestas pegadas de vuelta
 │
-├── 4_model_selection/
+├── 3_model_selection/
 │   ├── README.md
-│   └── selection.py              ← fine-tune 25 models on 10K notes / 50 codes
+│   ├── model_list.txt               ← los 25 modelos evaluados
+│   ├── build_selection_dataset.py   ← construye el subconjunto de 10.000 notas / 50 códigos
+│   └── selection.py                 ← ajusta cada modelo sobre ese subconjunto
 │
-├── 5_chunking_max_pooling/
+├── 4_chunking_max_pooling/
 │   ├── README.md
-│   └── train_chunking.py            ← focal loss + chunking + Max Pooling
+│   └── train_chunking.py            ← segmentación + Max Pooling (BCE estándar)
 │
-├── 6_summarization/
+├── 5_summarization/
 │   ├── README.md
-│   ├── sampling.py          ← stratified 1K-sample selection
-│   └── summarize_medgemma.py        ← MedGemma-27B-it summarization
+│   ├── sampling.py                   ← selección estratificada de 1.000 muestras
+│   ├── summarize_medgemma.py         ← resumen con MedGemma-27B-it
+│   └── build_summarized_splits.py    ← reconstruye train/val/test con los resúmenes
 │
-├── 7_classical_baseline/
+├── 6_classical_baseline/
 │   ├── README.md
 │   └── baseline.py                  ← TF-IDF / BM25 / BM25+ + OvR
 │
-└── 8_explainability/
+└── 7_explainability/
     ├── README.md
-    └── icd10_explainability.py      ← Integrated Gradients + Noise Tunnel
+    └── icd10_explainability.py      ← Gradientes Integrados + Noise Tunnel
 ```
 
 ---
 
-## 4. Step-by-step pipeline
+## 4. Pipeline paso a paso
 
-### Step 0 — Install dependencies
+### Paso 0 — Instalar dependencias
 
 ```bash
-# Core (transformers, sklearn, scispaCy)
+# Núcleo (transformers, sklearn, scispaCy)
 pip install -r requirements.txt
 
-# Optional: generative summarization only
+# Opcional: solo para el resumen generativo
 pip install -r requirements_generative.txt
 ```
 
-### Step 1 — Preprocess
+### Paso 1 — Preprocesado
 
 ```bash
 python 1_preprocessing/preprocess.py \
-    --diagnoses_csv data/raw/diagnoses_icd.csv \
-    --discharge_csv  data/raw/discharge.csv \
+    --diagnoses_csv data/raw/diagnoses_icd.csv.gz \
+    --discharge_csv  data/raw/discharge.csv.gz \
     --output_dir     data/processed/
 ```
 
-### Step 2 (optional) — Exploratory Data Analysis
+### Paso 2 — Evaluación con LLM sobre los 13 grupos de riesgo HCC
 
-See [2_eda/README.md](2_eda/README.md).
-
-### Step 3 — LLM evaluation on HCC risk groups
+Ver [2_llm_hcc_evaluation/README.md](2_llm_hcc_evaluation/README.md). **Este paso no usa ninguna API de LLM**: genera lotes de texto para copiar y pegar manualmente en un chat temporal de gemini.google.com (por motivos de cumplimiento normativo, Sección 4.1.3 de la memoria), y puntúa después las respuestas pegadas de vuelta.
 
 ```bash
-# Requires a Google Gemini API key and manual copy-paste via gemini.google.com
-# See 3_llm_hcc_evaluation/README.md for the prompting protocol.
-python 3_llm_hcc_evaluation/gemini_flash_evaluation.py
+python 2_llm_hcc_evaluation/build_batches.py \
+    --data_csv   data/processed/diagnoses_icd10.csv \
+    --output_dir results/llm/batches/ \
+    --group      enfermedad_renal_cronica \
+    --strategy   specific
 ```
 
-### Step 4 — Model selection
+### Paso 3 — Selección de modelos
 
-Fine-tunes 25 clinical Transformers on 10,000 notes / 50 most frequent ICD-10-CM codes:
+Construye primero el subconjunto de 10.000 notas / 50 códigos más frecuentes (a partir del dataset **completo**, no de N18) y ajusta los 25 modelos candidatos:
 
 ```bash
-python 4_model_selection/selection.py \
-    --data_dir     data/processed/ \
-    --output_dir   models/selection/ \
-    --n_samples    10000 \
-    --n_labels     50 \
-    --epochs       10 \
-    --lr           2e-5 \
-    --batch_size   16
+python 3_model_selection/build_selection_dataset.py \
+    --input_csv  data/processed/diagnoses_icd10.csv \
+    --output_csv data/processed/seleccion_10000.csv
+
+python 3_model_selection/selection.py \
+    --data_csv   data/processed/seleccion_10000.csv \
+    --output_dir results/selection/ \
+    --model_name michiyasunaga/BioLinkBERT-large
 ```
 
-### Step 5 — Chunking + Max Pooling (main classification)
+### Paso 4 — Segmentación + Max Pooling (clasificación principal)
 
-Fine-tunes the 4 selected models on the full N18 dataset with 512-token chunks (128-token overlap), focal loss, and Max Pooling aggregation:
+Ajusta los 4 modelos seleccionados sobre el N18 completo, con fragmentos de 512 tokens (solapamiento de 128) y Max Pooling:
 
 ```bash
-python 5_chunking_max_pooling/train_chunking.py \
-    --data_dir     data/processed/ \
-    --output_dir   models/chunking/ \
-    --chunk_size   512 \
-    --overlap      128 \
-    --thresholds   0.4 0.6 \
-    --epochs       10 \
-    --lr           2e-5 \
-    --batch_size   16
+python 4_chunking_max_pooling/train_chunking.py \
+    --data_dir   data/processed/ \
+    --output_dir models/chunking/ \
+    --model_name michiyasunaga/BioLinkBERT-large \
+    --thresholds 0.4 0.6 \
+    --epochs     10
 ```
 
-### Step 6 — Clinical summarization + classification on summaries
+### Paso 5 — Resumen clínico automático + clasificación sobre los resúmenes
 
-**6a. Stratified sampling (1,000 notes):**
+**5a. Muestreo estratificado (1.000 notas):**
 
 ```bash
-python 6_summarization/sampling.py \
+python 5_summarization/sampling.py \
     --data_csv   data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
-    --output_csv data/processed/1000.csv \
-    --n_samples  1000
+    --output_csv data/processed/muestra_1000.csv
 ```
 
-**6b. MedGemma-27B-it summarization (requires ≥40 GB VRAM):**
+**5b. Resumen con MedGemma-27B-it (requiere ≥ 40 GB de VRAM):**
 
 ```bash
-python 6_summarization/summarize_medgemma.py \
+python 5_summarization/summarize_medgemma.py \
     --input_csv  data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
     --output_csv data/processed/ehr_n18_summarized.csv
 ```
 
-**6c. Fine-tune classifiers on summaries:**
-
-Use `5_chunking_max_pooling/train_chunking.py` with `--no_chunking` flag (summaries fit within 512 tokens):
+**5c. Reconstruir las particiones con el texto resumido:**
 
 ```bash
-python 5_chunking_max_pooling/train_chunking.py \
-    --data_dir     data/processed/ \
-    --data_csv     data/processed/ehr_n18_summarized.csv \
-    --output_dir   models/summarized/ \
-    --no_chunking \
-    --thresholds   0.4 0.6 \
-    --epochs       10 \
-    --lr           2e-5 \
-    --batch_size   16
+python 5_summarization/build_summarized_splits.py \
+    --splits_dir     data/processed/ \
+    --summarized_csv data/processed/ehr_n18_summarized.csv \
+    --output_dir     data/processed/summarized/
 ```
 
-### Step 7 — Classical baseline
+**5d. Ajustar los clasificadores sobre los resúmenes** (usar [Paso 4](4_chunking_max_pooling/README.md) con `--no_chunking`):
 
 ```bash
-python 7_classical_baseline/baseline.py \
+python 4_chunking_max_pooling/train_chunking.py \
+    --data_dir   data/processed/summarized/ \
+    --output_dir models/summarized/ \
+    --model_name michiyasunaga/BioLinkBERT-large \
+    --no_chunking \
+    --thresholds 0.4 0.6
+```
+
+### Paso 6 — Línea base clásica
+
+```bash
+python 6_classical_baseline/baseline.py \
     --data_dir   data/processed/ \
     --output_dir results/baseline/
 ```
 
-### Step 8 — Explainability
+### Paso 7 — Explicabilidad
 
-```bash
-python 8_explainability/icd10_explainability.py \
-    --model_dir  models/summarized/RoBERTa-large-pubmed-mimic3-Voc-hf/ \
-    --note_csv   data/processed/ehr_n18_summarized.csv \
-    --hadm_id    <HADM_ID> \
-    --label      N18.4 \
-    --n_ig_steps 20 \
-    --nt_samples 10
+```python
+from icd10_explainability import load_model, analyze_note
+load_model("models/summarized/RoBERTa-large-pubmed-mimic3-Voc-hf/best_model")
+resultado = analyze_note(open("nota.txt").read())
 ```
 
 ---
 
-## 5. Hardware requirements
+## 5. Requisitos de hardware
 
-| Experiment | Minimum GPU VRAM | Notes |
+| Experimento | VRAM mínima | Notas |
 |---|---|---|
-| Selection (25 models × base/large) | 16 GB | A100 40 GB recommended |
-| Chunking + Max Pooling (large models) | 24 GB | Multi-GPU supported via `CUDA_VISIBLE_DEVICES` |
-| MedGemma-27B-it summarization | 40 GB (bfloat16) | Two A100 40 GB or one A100 80 GB |
-| Classical baseline (TF-IDF/BM25) | CPU only | 32 cores recommended |
-| Explainability (IG + Noise Tunnel) | 16 GB | |
+| Selección (25 modelos × base/large) | 16 GB | Se recomienda A100 40 GB |
+| Segmentación + Max Pooling (modelos large) | 24 GB | Multi-GPU soportado vía `CUDA_VISIBLE_DEVICES` |
+| Resumen con MedGemma-27B-it | 40 GB (bfloat16) | Dos A100 40 GB o una A100 80 GB |
+| Línea base clásica (TF-IDF/BM25) | Solo CPU | Se recomiendan 32 núcleos |
+| Explicabilidad (IG + Noise Tunnel) | 16 GB | |
 
-All Transformer experiments were run on an HPC cluster (SLURM) with NVIDIA A100 GPUs.
+Todos los experimentos con Transformer se ejecutaron en un clúster HPC (SLURM) con GPUs NVIDIA A100.
 
----
-
-## 6. Results
-
-### 6.1 LLM evaluation — Gemini 2.5 Flash (specific prompt, 13 HCC groups)
-
-| # | HCC group | ICD codes | N notes | J_real | J_ambos |
-|---|---|---|---|---|---|
-| 1 | Diabetes mellitus | E08–E13 | 34,608 | 0.456 | — |
-| 2 | Congestive heart failure | I11, I42, I50 | 24,527 | 0.326 | — |
-| 3 | Vascular disease | I25, I70–I73 | 31,641 | 0.293 | 0.297 |
-| 4 | Chronic kidney disease | N18 | 23,358 | 0.310 | 0.351 |
-| 5 | COPD & lung disorders | J41–J45, J47, J84 | 25,858 | 0.528 | — |
-| 6 | Oncology | C | 22,322 | 0.266 | — |
-| 7 | Major psychiatric conditions | F20–F33 | 29,337 | 0.603 | — |
-| 8 | Neurological conditions | G20–G83 | 11,216 | 0.340 | 0.343 |
-| 9 | Hepatic disease | K7, B18 | 13,045 | 0.353 | 0.353 |
-| 10 | HIV | B20 | 825 | 0.055 | — |
-| 11 | Amputations | Z89 | 2,213 | 0.485 | 0.487 |
-| 12 | Severe hematological disorders | D57, D61, D63, D66, D67, D69 | 19,611 | 0.403 | 0.434 |
-| 13 | Severe infections | A40, A41 | 7,493 | 0.407 | 0.409 |
-
-### 6.2 LLM evaluation — Gemini 3 Pro vs Flash (6 selected groups, J_real)
-
-| HCC group | Flash specific | G3 Pro specific | G3 Pro general |
-|---|---|---|---|
-| Diabetes mellitus | 0.456 | 0.505 | **0.729** |
-| Congestive heart failure | 0.326 | 0.443 | **0.698** |
-| Vascular disease | 0.293 | 0.530 | **0.648** |
-| Chronic kidney disease | 0.310 | 0.432 | **0.826** |
-| COPD & lung disorders | 0.528 | 0.497 | **0.750** |
-| Oncology | 0.266 | **0.696** | 0.680 |
-
-### 6.3 Model selection — Top-4 selection (10K notes, 50 labels)
-
-| Model | F1-weighted | F1-micro | F1-macro |
-|---|---|---|---|
-| BioLinkBERT-large | **0.5162** | **0.5490** | **0.4396** |
-| RoBERTa-large-pubmed-mimic3-Voc-hf | 0.5091 | 0.5404 | 0.4326 |
-| BlueBERT-pubmed-mimic-large-uncased | 0.4936 | 0.5278 | 0.4156 |
-| PubMedBERT_abstract | 0.4737 | 0.5255 | 0.3808 |
-
-### 6.4 Chunking + Max Pooling — Global metrics (N18 test set, 4,670 notes)
-
-*Underline: best threshold per model per metric. Bold+underline: global best.*
-
-| Model | Thr | Acc | Prec-Mi | Prec-Ma | Prec-W | Rec-Mi | Rec-Ma | Rec-W | F1-Mi | F1-Ma | F1-W |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| BioLinkBERT-large | 0.4 | 0.371 | 0.542 | 0.645 | 0.590 | **0.886** | **0.769** | **0.886** | 0.673 | **0.675** | 0.686 |
-| BioLinkBERT-large | 0.6 | 0.553 | 0.655 | **0.744** | 0.717 | 0.826 | 0.641 | 0.826 | 0.730 | 0.645 | 0.740 |
-| BlueBERT-large | 0.4 | 0.319 | 0.526 | 0.606 | 0.563 | 0.898 | 0.740 | 0.898 | 0.664 | 0.615 | 0.677 |
-| BlueBERT-large | 0.6 | 0.579 | 0.668 | 0.735 | 0.719 | 0.835 | 0.721 | 0.835 | 0.742 | 0.711 | 0.750 |
-| PubMedBERT_abstract | 0.4 | 0.171 | 0.475 | 0.589 | 0.507 | **0.944** | **0.815** | **0.944** | 0.632 | 0.657 | 0.645 |
-| PubMedBERT_abstract | 0.6 | **0.593** | **0.693** | 0.729 | **0.724** | 0.810 | 0.741 | 0.810 | **0.747** | **0.723** | **0.752** |
-| RoBERTa-large-pubmed-mimic3-Voc-hf | 0.4 | 0.133 | 0.464 | 0.612 | 0.501 | 0.943 | 0.793 | 0.943 | 0.622 | 0.661 | 0.637 |
-| RoBERTa-large-pubmed-mimic3-Voc-hf | 0.6 | 0.557 | 0.661 | 0.701 | 0.686 | 0.827 | 0.753 | 0.827 | 0.735 | 0.716 | 0.740 |
-
-### 6.5 Chunking + Max Pooling — Per-code metrics, threshold 0.4
-
-| Code | Prec BioL | Prec Blue | Prec PubM | Prec Rob | Rec BioL | Rec Blue | Rec PubM | Rec Rob | F1 BioL | F1 Blue | F1 PubM | F1 Rob | Support |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| N18.1 | **0.85** | 0.80 | 0.69 | 0.73 | **0.65** | 0.24 | **0.65** | **0.65** | **0.73** | 0.36 | 0.67 | 0.69 | 17 |
-| N18.2 | **0.85** | 0.70 | 0.83 | 0.75 | 0.57 | **0.59** | 0.58 | 0.58 | **0.68** | 0.64 | **0.68** | 0.65 | 157 |
-| N18.3 | **0.74** | 0.61 | 0.40 | 0.39 | 0.77 | 0.82 | 0.97 | **0.98** | **0.76** | 0.70 | 0.56 | 0.56 | 1,361 |
-| N18.4 | 0.54 | **0.61** | 0.57 | 0.60 | 0.76 | 0.74 | **0.77** | 0.75 | 0.63 | **0.67** | 0.66 | 0.66 | 396 |
-| N18.5 | 0.46 | 0.36 | 0.48 | **0.69** | 0.65 | **0.83** | 0.76 | 0.62 | 0.54 | 0.51 | 0.59 | **0.65** | 113 |
-| N18.6 | 0.66 | **0.73** | 0.71 | 0.71 | **0.99** | 0.98 | **0.99** | **0.99** | 0.79 | **0.84** | 0.83 | 0.82 | 937 |
-| N18.9 | 0.43 | 0.42 | **0.44** | 0.42 | **1.00** | 0.99 | 0.99 | **1.00** | 0.60 | 0.59 | **0.61** | 0.59 | 1,713 |
-
-BioL = BioLinkBERT-large, Blue = BlueBERT-large, PubM = PubMedBERT_abstract, Rob = RoBERTa-large-pubmed-mimic3-Voc-hf.
-
-### 6.6 Chunking + Max Pooling — Per-code metrics, threshold 0.6
-
-| Code | Prec BioL | Prec Blue | Prec PubM | Prec Rob | Rec BioL | Rec Blue | Rec PubM | Rec Rob | F1 BioL | F1 Blue | F1 PubM | F1 Rob | Support |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| N18.1 | 0.67 | 0.69 | **0.79** | **0.79** | 0.12 | 0.53 | **0.65** | **0.65** | 0.20 | 0.60 | **0.71** | **0.71** | 17 |
-| N18.2 | 0.83 | **0.84** | 0.81 | 0.75 | 0.55 | 0.58 | 0.58 | **0.59** | 0.66 | **0.69** | 0.68 | 0.66 | 157 |
-| N18.3 | **0.93** | 0.92 | 0.90 | 0.82 | 0.72 | 0.73 | 0.73 | **0.75** | **0.81** | **0.81** | **0.81** | 0.78 | 1,361 |
-| N18.4 | **0.82** | 0.76 | 0.69 | 0.59 | 0.68 | 0.69 | 0.72 | **0.76** | **0.74** | 0.72 | 0.71 | 0.67 | 396 |
-| N18.5 | **0.72** | 0.66 | 0.57 | 0.62 | 0.53 | 0.63 | 0.69 | **0.70** | 0.61 | 0.64 | 0.62 | **0.66** | 113 |
-| N18.6 | 0.74 | 0.74 | 0.77 | **0.79** | 0.98 | 0.97 | **0.99** | 0.97 | 0.84 | 0.84 | **0.87** | **0.87** | 937 |
-| N18.9 | 0.50 | 0.53 | **0.56** | 0.54 | 0.91 | **0.92** | 0.83 | 0.86 | 0.65 | **0.67** | **0.67** | 0.66 | 1,713 |
-
-### 6.7 Summarization quality — ROUGE metrics (1,000 samples)
-
-| Model | Valid | R1-P | R1-R | R1-F1 | R2-P | R2-R | R2-F1 | RL-P | RL-R | RL-F1 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Llama3-OpenBioLLM-8B | 933 | 0.701 | 0.041 | 0.076 | 0.298 | 0.019 | 0.034 | 0.481 | 0.027 | 0.050 |
-| Bio-Medical-Llama-3-8B | 995 | 0.803 | 0.049 | 0.088 | 0.422 | 0.022 | 0.039 | 0.567 | 0.030 | 0.054 |
-| MedGemma-1.5-4b-it | 955 | 0.845 | **0.111** | **0.193** | 0.434 | **0.056** | **0.097** | 0.518 | **0.068** | **0.118** |
-| MedGemma-27B-it | **1000** | **0.855** | 0.102 | 0.179 | **0.397** | 0.047 | 0.082 | **0.482** | 0.057 | 0.100 |
-
-### 6.8 Comparison: Max Pooling vs. summarized notes (23,358 notes, N18 test set)
-
-| Metric | Max Pooling value | Model | Thr | Summarized value | Model | Thr |
-|---|---|---|---|---|---|---|
-| Accuracy | 0.593 | PubM | 0.6 | **0.770** | PubM | 0.4 |
-| Precision micro | 0.693 | PubM | 0.6 | **0.810** | Rob | 0.6 |
-| Precision macro | 0.744 | BioL | 0.6 | **0.840** | Blue | 0.6 |
-| Precision weighted | 0.724 | PubM | 0.6 | **0.844** | Rob | 0.6 |
-| Recall micro | **0.944** | PubM | 0.4 | 0.787 | Blue | 0.4 |
-| Recall macro | **0.815** | PubM | 0.4 | 0.637 | Blue | 0.4 |
-| Recall weighted | **0.944** | PubM | 0.4 | 0.787 | Blue | 0.4 |
-| F1 micro | 0.747 | PubM | 0.6 | **0.783** | BioL | 0.4 |
-| F1 macro | **0.723** | PubM | 0.6 | 0.691 | BioL | 0.4 |
-| F1 weighted | 0.752 | PubM | 0.6 | **0.776** | BioL | 0.4 |
-
-### 6.9 Classical baseline — Best results per metric (N18 test set)
-
-| Metric | Value | Representation | BM25 params | Classifier | Features |
-|---|---|---|---|---|---|
-| Accuracy | 0.602 | TF-IDF uni+bigr | — | LinearSVC | 50K |
-| Precision micro | 0.844 | TF-IDF uni+bigr full vocab | — | LogReg | 930K |
-| Precision macro | 0.747 | BM25 unigrams full vocab | k₁=2, b=0.25 | LogReg | 103K |
-| Precision weighted | 0.810 | TF-IDF uni+bigr full vocab | — | LinearSVC | 930K |
-| Recall micro | 0.620 | BM25+ uni+bigr | k₁=2, b=1, δ=0.5 | LogReg | 50K |
-| Recall macro | 0.402 | BM25+ unigrams filtered | k₁=1.5, b=1, δ=0.5 | LinearSVC | 53K |
-| Recall weighted | 0.620 | BM25+ uni+bigr | k₁=2, b=1, δ=0.5 | LogReg | 50K |
-| F1 micro | 0.690 | TF-IDF uni+bigr | — | LinearSVC | 50K |
-| F1 macro | 0.451 | BM25+ unigrams filtered | k₁=1.5, b=1, δ=0.5 | LinearSVC | 53K |
-| F1 weighted | 0.660 | TF-IDF uni+bigr | — | LinearSVC | 50K |
+> **Descarga manual de modelos.** Los modelos de la familia `RoBERTa-*-PM-M3-Voc-hf` no están en HuggingFace Hub: deben descargarse desde el repositorio oficial [facebookresearch/bio-lm](https://github.com/facebookresearch/bio-lm) (Lewis et al. 2020) y cargarse desde una ruta local.
 
 ---
 
-## 7. Citation
+## 6. Resultados
 
-If you use this code or results in your work, please cite:
+Cada carpeta contiene en su propio README las tablas de resultados detalladas de la sección correspondiente de la memoria:
+
+- [2_llm_hcc_evaluation](2_llm_hcc_evaluation/README.md) — Jaccard por grupo HCC, Gemini 2.5 Flash vs. Gemini 3 Pro (Sección 5.1).
+- [3_model_selection](3_model_selection/README.md) — ranking completo de los 25 modelos (Anexo B).
+- [4_chunking_max_pooling](4_chunking_max_pooling/README.md) — métricas globales y por código, segmentación + Max Pooling (Sección 5.3).
+- [5_summarization](5_summarization/README.md) — calidad ROUGE de los resúmenes y comparativa Max Pooling vs. resúmenes (Secciones 5.4 y 5.5).
+- [6_classical_baseline](6_classical_baseline/README.md) — mejores resultados TF-IDF/BM25/BM25+ (Sección 5.6).
+
+### Resumen — mejor F1-weighted por enfoque (conjunto de test N18, 4.670 notas)
+
+| Enfoque | F1-weighted | Modelo | Umbral |
+|---|---|---|---|
+| Segmentación + Max Pooling | 0,7516 | PubMedBERT_abstract | 0,6 |
+| Resumen (MedGemma-27B-it) | 0,7758 | BioLinkBERT-large | 0,4 |
+| Línea base clásica (TF-IDF) | 0,6595 | TF-IDF uni+bigr + LinearSVC | — |
+
+---
+
+## 7. Cita
+
+Si utilizas este código o estos resultados en tu trabajo, cita por favor:
 
 ```bibtex
 @thesis{defrancisco2026icd10,
@@ -382,14 +281,15 @@ If you use this code or results in your work, please cite:
   title   = {Sistema de Codificación Automática {ICD-10-CM} en Grupos de Riesgo {CMS-HCC}},
   school  = {Universidad de León},
   year    = {2026},
-  type    = {Bachelor's Thesis}
+  type    = {Trabajo Fin de Grado}
 }
 ```
 
-### Key references
+### Referencias clave
 
 - Johnson et al. (2023). MIMIC-IV. *Scientific Data*, 10, 1. DOI: 10.1038/s41597-022-01899-x
 - Yasunaga et al. (2022). LinkBERT. *ACL 2022*.
 - Gu et al. (2021). PubMedBERT. *ACL 2021*.
+- Lewis et al. (2020). RoBERTa-PM-M3-Voc (bio-lm). *ClinicalNLP Workshop 2020*.
 - Sundararajan et al. (2017). Integrated Gradients. *ICML 2017*.
-- Lin & Fox (2004). ROUGE. *ACL 2004 Workshop*.
+- Lin (2004). ROUGE. *ACL 2004 Workshop*.

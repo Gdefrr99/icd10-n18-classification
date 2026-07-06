@@ -1,37 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ICD-10-CM N18.x Explainability Module — Noise Tunnel + Integrated Gradients
-=============================================================================
-Predicts which ICD-10-CM N18.x codes are present in a clinical note and
-extracts the text spans (evidence fragments) supporting each prediction,
-together with their normalized attribution score.
+Módulo de explicabilidad ICD-10-CM N18.x — Noise Tunnel + Gradientes Integrados
+=================================================================================
+Predice qué códigos ICD-10-CM N18.x están presentes en una nota clínica y
+extrae los fragmentos de texto (evidencia) que sustentan cada predicción,
+junto con su puntuación de atribución normalizada (Sección 4.7 de la memoria).
 
-Method: Noise Tunnel + Integrated Gradients (SmoothGrad-IG) via Captum.
-  - NoiseTunnel averages attributions over NT_SAMPLES Gaussian-perturbed
-    embeddings, reducing IG variance by ~60-80% for large models
-    (Smilkov et al., 2017).
-  - Embedding-dimension aggregation uses signed sum (not L2 norm), preserving
-    attribution direction: positive scores indicate supporting evidence,
-    negative scores indicate contrary evidence.
-  - Number of spans shown depends on model confidence
-    (see CONF_TIER_* in the configuration section).
+Método: Noise Tunnel + Gradientes Integrados (SmoothGrad-IG) vía Captum.
+  - NoiseTunnel promedia las atribuciones sobre NT_SAMPLES perturbaciones
+    gaussianas de los embeddings, reduciendo la varianza de IG (Smilkov et
+    al., 2017).
+  - La agregación por dimensión de embedding usa la suma con signo (no la
+    norma L2), preservando la dirección de la atribución: los valores
+    positivos indican evidencia de apoyo, los negativos evidencia contraria.
+  - El número de spans mostrados depende de la confianza del modelo
+    (véanse CONF_HIGH / CONF_MED en la sección de configuración).
 
-Compatible models: BioLinkBERT-large, RoBERTa-large-PM-M3-Voc-hf.
+Modelo utilizado en la memoria: RoBERTa-large-pubmed-mimic3-Voc-hf entrenado
+sobre notas resumidas por MedGemma-27B-it, con umbral de decisión 0,6
+(Sección 4.7.3). El módulo es compatible con cualquier modelo de la familia
+BERT/RoBERTa entrenado con los scripts de este repositorio.
 
-Both models below are integrated into icd10_system:
-  - PubMedBERT_abstract (thr=0.6, Max Pooling) — segmentation pipeline
-  - BioLinkBERT-large   (thr=0.4, summarized)  — summarization pipeline
-See: https://github.com/Gdefrr99/icd10_system
-
-Dependencies:
+Dependencias:
     pip install torch transformers captum
 
-Quick start:
+Inicio rápido:
     from icd10_explainability import load_model, analyze_note
-    load_model("./path/to/saved/model")
+    load_model("./ruta/al/modelo/entrenado")
     results = analyze_note("DISCHARGE SUMMARY ...")
-    # results is the dict expected by the icd10_system HTML interface
 """
 
 import re

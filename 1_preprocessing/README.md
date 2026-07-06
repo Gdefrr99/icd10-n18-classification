@@ -1,38 +1,41 @@
-# Step 1 — Preprocessing
+# Paso 1 — Preprocesado
 
-Joins MIMIC-IV tables, filters to N18, applies clinical text normalization, and produces stratified splits.
+Une las tablas de MIMIC-IV, filtra los registros ICD-10-CM, aplica la normalización de texto clínico y construye tanto el dataset completo ICD-10-CM como el subgrupo N18 con sus particiones.
 
-## What the script does
+## Qué hace el script
 
-1. Loads `diagnoses_icd.csv` and filters to `icd_version = 10`.
-2. Groups ICD-10-CM codes per admission and keeps only admissions with ≥1 N18.x code.
-3. Joins with `discharge.csv` on `(subject_id, hadm_id)`.
-4. Applies the following text normalization steps in order:
-   - Removes administrative headers (`Name: ___`, `Admission Date: ___`, etc.).
-   - Replaces `___` anonymization markers with `[UNK]`.
-   - Expands common clinical abbreviations: `s/p → status post`, `c/o → complains of`, `h/o → history of`, `w/o → without`, `w/ → with`, `pt → patient`.
-   - Restores hard-wrapped paragraphs (MIMIC hard-wrap fix).
-   - Normalizes multiple spaces.
-   - Tags `History of Present Illness:` and `Discharge Diagnosis:` sections with extra newlines.
-5. Saves the full N18 dataset.
-6. Produces a stratified 70/10/20 train/val/test split using `MultilabelStratifiedShuffleSplit`.
+1. Carga `diagnoses_icd.csv(.gz)` y filtra a `icd_version = 10`.
+2. Agrupa los códigos ICD-10-CM por ingreso y cruza con `discharge.csv(.gz)` mediante `(subject_id, hadm_id)`.
+3. Aplica la normalización de texto clínico (Sección 3.2 de la memoria) a **todas** las notas:
+   - Elimina cabeceras administrativas (`Name: ___`, `Admission Date: ___`, etc.).
+   - Sustituye los marcadores de anonimización `___` restantes por `[UNK]`.
+   - Expande abreviaturas clínicas: `s/p → status post`, `c/o → complains of`, `h/o → history of`, `w/o → without`, `w/ → with`, `pt → patient`.
+   - Restaura los párrafos partidos por el hard-wrap de MIMIC-IV.
+   - Normaliza espacios múltiples.
+   - Marca las secciones `History of Present Illness:` y `Discharge Diagnosis:`.
+4. Guarda el **dataset completo ICD-10-CM** (122.288 notas, Sección 3.1.1), que es la entrada del [Paso 3 — Selección de modelos](../3_model_selection/README.md).
+5. Filtra al **subgrupo N18** (Enfermedad Renal Crónica, Sección 4.2): conserva las notas con al menos un código N18.x y elimina la única nota con un código N18 duplicado (23.359 → 23.358 notas).
+6. Genera una partición estratificada multietiqueta 70/10/20 (semilla 42) mediante `MultilabelStratifiedShuffleSplit`.
 
-## Usage
+## Uso
+
+Los dos archivos de MIMIC-IV pueden pasarse tal cual se descargan de PhysioNet, en formato `.csv.gz` — pandas infiere la compresión a partir de la extensión, por lo que **no es necesario descomprimirlos manualmente**:
 
 ```bash
 python 1_preprocessing/preprocess.py \
-    --diagnoses_csv data/raw/diagnoses_icd.csv \
-    --discharge_csv  data/raw/discharge.csv \
+    --diagnoses_csv data/raw/diagnoses_icd.csv.gz \
+    --discharge_csv  data/raw/discharge.csv.gz \
     --output_dir     data/processed/
 ```
 
-## Output files
+## Archivos de salida
 
-| File | Rows | Description |
+| Archivo | Filas | Descripción |
 |---|---|---|
-| `diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv` | 23,358 | Full N18 dataset |
-| `ehr_icd_train_clean.csv` | 16,351 | Training split (70 %) |
-| `ehr_icd_val_clean.csv` | 2,337 | Validation split (10 %) |
-| `ehr_icd_test_clean.csv` | 4,670 | Test split (20 %) |
+| `diagnoses_icd10.csv` | 122.288 | Dataset completo ICD-10-CM (todos los grupos, no solo N18) |
+| `diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv` | 23.358 | Dataset N18 completo |
+| `ehr_icd_train_clean.csv` | 16.351 | Partición de entrenamiento (70 %) |
+| `ehr_icd_val_clean.csv` | 2.337 | Partición de validación (10 %) |
+| `ehr_icd_test_clean.csv` | 4.670 | Partición de test (20 %) |
 
-Each CSV has columns: `subject_id`, `hadm_id`, `icd_code` (Python list literal), `text` (preprocessed).
+Cada CSV tiene las columnas: `subject_id`, `hadm_id`, `icd_code` (lista de códigos como literal Python), `text` (texto preprocesado).

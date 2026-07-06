@@ -2,14 +2,14 @@
 
 Two-stage pipeline that (a) selects a representative 1,000-note subset for model comparison, (b) summarizes all N18 notes with MedGemma-27b-it, and (c) fine-tunes classifiers on the resulting summaries.
 
-## 6a. MLSMOTE stratified sampling
+## 6a. Stratified sampling
 
 Selects 1,000 notes from the full N18 dataset preserving the multi-label code distribution.
 
 ```bash
-python 6_summarization/mlsmote_sampling.py \
+python 6_summarization/sampling.py \
     --data_csv   data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
-    --output_csv data/processed/mlsmote_1000.csv \
+    --output_csv data/processed/1000.csv \
     --n_samples  1000
 ```
 
@@ -23,14 +23,14 @@ Expected distribution (from the thesis):
 | N18.4 | 8.5 % | 8.3 % |
 | N18.2 | 3.4 % | 3.3 % |
 | N18.5 | 2.4 % | 2.4 % |
-| N18.1 | 0.4 % | 2.3 % ← MLSMOTE correction for rarest code |
+| N18.1 | 0.4 % | 2.3 % ← Correction for rarest code |
 
 ## 6b. MedGemma-27b-it summarization
 
 ### Why MedGemma-27b-it?
 
 Among the 4 evaluated generative models (Llama3-OpenBioLLM-8B, Bio-Medical-Llama-3-8B, MedGemma-1.5-4b-it, MedGemma-27b-it), MedGemma-27b-it was selected because:
-- It is the **only model achieving 100 % valid responses** (1,000/1,000) on the MLSMOTE subset.
+- It is the **only model achieving 100 % valid responses** (1,000/1,000) on the 1,000 samples subset.
 - It keeps 95 % of summaries under 487 tokens (within the 512-token BERT limit).
 - It achieves the **highest ROUGE-1 precision** (0.855), indicating minimal hallucination.
 - It produces the **best downstream classification metrics** when used for training.

@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Stratified 1,000-sample selection using MLSMOTE for the summarization evaluation phase.
+Stratified 1,000-sample selection for the summarization evaluation phase.
 
 Selects 1,000 notes from the full N18 dataset reproducing the multi-label distribution.
 Used to evaluate and compare the 4 generative summarization models before scaling to
 the full 23,358-note dataset.
 
 Usage:
-    python 6_summarization/mlsmote_sampling.py \
+    python 6_summarization/sampling.py \
         --data_csv   data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
-        --output_csv data/processed/mlsmote_1000.csv \
+        --output_csv data/processed/1000.csv \
         --n_samples  1000
 """
 

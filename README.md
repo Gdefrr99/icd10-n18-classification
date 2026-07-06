@@ -101,7 +101,7 @@ icd10-n18-classification/
 │
 ├── 6_summarization/
 │   ├── README.md
-│   ├── mlsmote_sampling.py          ← stratified 1K-sample selection
+│   ├── sampling.py          ← stratified 1K-sample selection
 │   └── summarize_medgemma.py        ← MedGemma-27B-it summarization
 │
 ├── 7_classical_baseline/
@@ -181,12 +181,12 @@ python 5_chunking_max_pooling/train_chunking.py \
 
 ### Step 6 — Clinical summarization + classification on summaries
 
-**6a. MLSMOTE stratified sampling (1,000 notes):**
+**6a. Stratified sampling (1,000 notes):**
 
 ```bash
-python 6_summarization/mlsmote_sampling.py \
+python 6_summarization/sampling.py \
     --data_csv   data/processed/diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv \
-    --output_csv data/processed/mlsmote_1000.csv \
+    --output_csv data/processed/1000.csv \
     --n_samples  1000
 ```
 
@@ -331,7 +331,7 @@ BioL = BioLinkBERT-large, Blue = BlueBERT-large, PubM = PubMedBERT_abstract, Rob
 | N18.6 | 0.74 | 0.74 | 0.77 | **0.79** | 0.98 | 0.97 | **0.99** | 0.97 | 0.84 | 0.84 | **0.87** | **0.87** | 937 |
 | N18.9 | 0.50 | 0.53 | **0.56** | 0.54 | 0.91 | **0.92** | 0.83 | 0.86 | 0.65 | **0.67** | **0.67** | 0.66 | 1,713 |
 
-### 6.7 Summarization quality — ROUGE metrics (1,000 MLSMOTE samples)
+### 6.7 Summarization quality — ROUGE metrics (1,000 samples)
 
 | Model | Valid | R1-P | R1-R | R1-F1 | R2-P | R2-R | R2-F1 | RL-P | RL-R | RL-F1 |
 |---|---|---|---|---|---|---|---|---|---|---|

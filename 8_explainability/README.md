@@ -72,15 +72,6 @@ results = analyze_note(open("note.txt").read())
 print(results)
 ```
 
-## Integration with icd10_system
-
-This module is used by [icd10_system](https://github.com/Gdefrr99/icd10_system) in both pipelines:
-
-- **Segmentation pipeline**: loads `PubMedBERT_abstract` (threshold 0.6, Max Pooling), which processes the original (non-summarized) discharge note in 512-token chunks.
-- **Summarization pipeline**: loads `BioLinkBERT-large` (threshold 0.4), which processes MedGemma-27b-it summaries (≤512 tokens, no chunking needed).
-
-The `results` dict returned by `analyze_note()` is passed directly to the HTML interface in `icd10_system`.
-
 ## Important: label order verification
 
 Before deploying, verify that `LABELS` in `icd10_explainability.py` matches exactly the order of `mlb.classes_` from training:

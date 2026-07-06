@@ -6,7 +6,7 @@ The experiments focus on multi-label classification of the **Chronic Kidney Dise
 
 > **Deployment note.** The two best-performing models from this pipeline are integrated into the [icd10_system](https://github.com/Gdefrr99/icd10_system) clinical coding assistant:
 > - **Segmentation pipeline**: `PubMedBERT_abstract`, threshold 0.6, Max Pooling.
-> - **Summarization pipeline**: `BioLinkBERT-large`, threshold 0.4, trained on notes summarized by MedGemma-27b-it.
+> - **Summarization pipeline**: `BioLinkBERT-large`, threshold 0.4, trained on notes summarized by MedGemma-27B-it.
 
 ---
 
@@ -27,13 +27,13 @@ The experiments focus on multi-label classification of the **Chronic Kidney Dise
 Access to MIMIC-IV requires a PhysioNet credentialed account. **No data is included in this repository.**
 
 1. Create an account at [physionet.org](https://physionet.org).
-2. Complete the required CITI training course and sign the data use agreement.
+2. Complete the required CITI training courses and sign the data use agreement.
 3. Download MIMIC-IV (v2.2 or later) from [physionet.org/content/mimiciv](https://physionet.org/content/mimiciv/).
 4. From the downloaded archive, you need exactly two files:
    - `hosp/diagnoses_icd.csv.gz` — ICD codes per admission.
    - `note/discharge.csv.gz` — Discharge summary text per admission.
 
-Decompress both files into `data/raw/`.
+Decompress `discharge.csv.gz`. Then put `diagnoses_icd.csv.gz` and `discharge.csv` files into `data/raw/`.
 
 ---
 
@@ -50,7 +50,7 @@ Run the preprocessing pipeline (see [1_preprocessing/](1_preprocessing/README.md
 ```
 data/
 └── raw/
-    ├── diagnoses_icd.csv          # from MIMIC-IV hosp module
+    ├── diagnoses_icd.csv.gz          # from MIMIC-IV hosp module
     └── discharge.csv              # from MIMIC-IV note module
 ```
 
@@ -93,7 +93,7 @@ icd10-n18-classification/
 │
 ├── 4_model_selection/
 │   ├── README.md
-│   └── prescreening.py              ← fine-tune 23 models on 10K notes / 50 codes
+│   └── selection.py              ← fine-tune 25 models on 10K notes / 50 codes
 │
 ├── 5_chunking_max_pooling/
 │   ├── README.md
@@ -102,7 +102,7 @@ icd10-n18-classification/
 ├── 6_summarization/
 │   ├── README.md
 │   ├── mlsmote_sampling.py          ← stratified 1K-sample selection
-│   └── summarize_medgemma.py        ← MedGemma-27b-it summarization
+│   └── summarize_medgemma.py        ← MedGemma-27B-it summarization
 │
 ├── 7_classical_baseline/
 │   ├── README.md
@@ -140,7 +140,7 @@ python 1_preprocessing/preprocess.py \
 
 See [2_eda/README.md](2_eda/README.md).
 
-### Step 3 (optional) — LLM evaluation on HCC risk groups
+### Step 3 — LLM evaluation on HCC risk groups
 
 ```bash
 # Requires a Google Gemini API key and manual copy-paste via gemini.google.com
@@ -148,14 +148,14 @@ See [2_eda/README.md](2_eda/README.md).
 python 3_llm_hcc_evaluation/gemini_flash_evaluation.py
 ```
 
-### Step 4 — Model selection (prescreening)
+### Step 4 — Model selection
 
-Fine-tunes 23 clinical Transformers on 10,000 notes / 50 most frequent ICD-10-CM codes:
+Fine-tunes 25 clinical Transformers on 10,000 notes / 50 most frequent ICD-10-CM codes:
 
 ```bash
-python 4_model_selection/prescreening.py \
+python 4_model_selection/selection.py \
     --data_dir     data/processed/ \
-    --output_dir   models/prescreening/ \
+    --output_dir   models/selection/ \
     --n_samples    10000 \
     --n_labels     50 \
     --epochs       10 \
@@ -190,7 +190,7 @@ python 6_summarization/mlsmote_sampling.py \
     --n_samples  1000
 ```
 
-**6b. MedGemma-27b-it summarization (requires ≥40 GB VRAM):**
+**6b. MedGemma-27B-it summarization (requires ≥40 GB VRAM):**
 
 ```bash
 python 6_summarization/summarize_medgemma.py \
@@ -240,9 +240,9 @@ python 8_explainability/icd10_explainability.py \
 
 | Experiment | Minimum GPU VRAM | Notes |
 |---|---|---|
-| Prescreening (23 models × base/large) | 16 GB | A100 40 GB recommended |
+| Selection (25 models × base/large) | 16 GB | A100 40 GB recommended |
 | Chunking + Max Pooling (large models) | 24 GB | Multi-GPU supported via `CUDA_VISIBLE_DEVICES` |
-| MedGemma-27b-it summarization | 40 GB (bfloat16) | Two A100 40 GB or one A100 80 GB |
+| MedGemma-27B-it summarization | 40 GB (bfloat16) | Two A100 40 GB or one A100 80 GB |
 | Classical baseline (TF-IDF/BM25) | CPU only | 32 cores recommended |
 | Explainability (IG + Noise Tunnel) | 16 GB | |
 
@@ -281,7 +281,7 @@ All Transformer experiments were run on an HPC cluster (SLURM) with NVIDIA A100 
 | COPD & lung disorders | 0.528 | 0.497 | **0.750** |
 | Oncology | 0.266 | **0.696** | 0.680 |
 
-### 6.3 Model selection — Top-4 prescreening (10K notes, 50 labels)
+### 6.3 Model selection — Top-4 selection (10K notes, 50 labels)
 
 | Model | F1-weighted | F1-micro | F1-macro |
 |---|---|---|---|
@@ -338,7 +338,7 @@ BioL = BioLinkBERT-large, Blue = BlueBERT-large, PubM = PubMedBERT_abstract, Rob
 | Llama3-OpenBioLLM-8B | 933 | 0.701 | 0.041 | 0.076 | 0.298 | 0.019 | 0.034 | 0.481 | 0.027 | 0.050 |
 | Bio-Medical-Llama-3-8B | 995 | 0.803 | 0.049 | 0.088 | 0.422 | 0.022 | 0.039 | 0.567 | 0.030 | 0.054 |
 | MedGemma-1.5-4b-it | 955 | 0.845 | **0.111** | **0.193** | 0.434 | **0.056** | **0.097** | 0.518 | **0.068** | **0.118** |
-| MedGemma-27b-it | **1000** | **0.855** | 0.102 | 0.179 | **0.397** | 0.047 | 0.082 | **0.482** | 0.057 | 0.100 |
+| MedGemma-27B-it | **1000** | **0.855** | 0.102 | 0.179 | **0.397** | 0.047 | 0.082 | **0.482** | 0.057 | 0.100 |
 
 ### 6.8 Comparison: Max Pooling vs. summarized notes (23,358 notes, N18 test set)
 

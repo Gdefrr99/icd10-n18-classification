@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-Prescreening: fine-tune 23 clinical Transformer models on a 10K-note / 50-code
+Selection: fine-tune 25 clinical Transformer models on a 10K-note / 50-code
 subset to select the top-4 models for full training on the N18 task.
 
-The prescreening uses a reduced N18-adjacent dataset (10K discharge summaries,
+The selection uses a reduced N18-adjacent dataset (10K discharge summaries,
 50 most-frequent ICD-10-CM codes) to estimate model capacity efficiently.
 The top-4 models ranked by F1-weighted on the validation set are then
 fine-tuned on the full 23K N18 dataset (Steps 5 and 6).
 
 Usage:
-    python 4_model_selection/prescreening.py \
+    python 4_model_selection/selection.py \
         --data_dir     data/processed/ \
-        --output_dir   results/prescreening/ \
+        --output_dir   results/selection/ \
         --model_name   michiyasunaga/BioLinkBERT-large \
-        --epochs       5 \
+        --epochs       10 \
         --max_samples  10000
 
-To run all 23 models sequentially (on a cluster, use array jobs):
+To run all 25 models sequentially (on a cluster, use array jobs):
     for model in $(cat 4_model_selection/model_list.txt); do
-        python 4_model_selection/prescreening.py --model_name "$model" ...
+        python 4_model_selection/selection.py --model_name "$model" ...
     done
 """
 
@@ -44,7 +44,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 N18_LABELS = ["N18.1", "N18.2", "N18.3", "N18.4", "N18.5", "N18.6", "N18.9"]
 MAX_LENGTH = 512
-THRESHOLD  = 0.5   # fixed threshold for prescreening (no per-class tuning)
+THRESHOLD  = 0.3   # fixed threshold for selection (no per-class tuning)
 
 
 class MultiLabelDataset(torch.utils.data.Dataset):
@@ -96,12 +96,12 @@ def compute_metrics(eval_pred):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir",     default="data/processed/")
-    parser.add_argument("--output_dir",   default="results/prescreening/")
+    parser.add_argument("--output_dir",   default="results/selection/")
     parser.add_argument("--model_name",   required=True)
-    parser.add_argument("--epochs",       type=int,   default=5)
+    parser.add_argument("--epochs",       type=int,   default=10)
     parser.add_argument("--batch_size",   type=int,   default=16)
     parser.add_argument("--max_samples",  type=int,   default=10000,
-                        help="Max training samples for prescreening")
+                        help="Max training samples for selection")
     parser.add_argument("--lr",           type=float, default=2e-5)
     args = parser.parse_args()
 
@@ -180,7 +180,7 @@ def main():
         train_dataset=ds_train,
         eval_dataset=ds_val,
         compute_metrics=compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],
     )
 
     print("Training...")
@@ -196,9 +196,9 @@ def main():
         "max_samples":   args.max_samples,
     }
     import json
-    with open(output_dir / "prescreening_summary.json", "w") as f:
+    with open(output_dir / "selection_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"Summary saved → {output_dir / 'prescreening_summary.json'}")
+    print(f"Summary saved → {output_dir / 'selection_summary.json'}")
 
 
 if __name__ == "__main__":

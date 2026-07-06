@@ -5,7 +5,7 @@
 ## Obtaining MIMIC-IV
 
 1. Register at [physionet.org](https://physionet.org/register/).
-2. Complete the CITI Program "Data or Specimens Only Research" course.
+2. Complete the CITI Program "Data or Specimens Only Research" and "Conflicts of Interest" courses.
 3. Sign the data use agreement for MIMIC-IV at [physionet.org/content/mimiciv](https://physionet.org/content/mimiciv/).
 4. Download the dataset (v2.2 or later). Only two files are needed:
 
@@ -14,14 +14,14 @@
 | `diagnoses_icd.csv.gz` | `hosp/diagnoses_icd.csv.gz` | ICD codes per admission (subject_id, hadm_id, icd_version, icd_code) |
 | `discharge.csv.gz` | `note/discharge.csv.gz` | Discharge summary text (subject_id, hadm_id, text) |
 
-Place the decompressed CSVs in `data/raw/`.
+Decompress `discharge.csv.gz`. Then put `diagnoses_icd.csv.gz` and `discharge.csv` files into `data/raw/`.
 
 ## Expected directory layout after preprocessing
 
 ```
 data/
 ├── raw/
-│   ├── diagnoses_icd.csv          ← from MIMIC-IV hosp module
+│   ├── diagnoses_icd.csv.gz         ← from MIMIC-IV hosp module
 │   └── discharge.csv              ← from MIMIC-IV note module
 └── processed/
     ├── diagnoses_icd10_filtrado_enfermedad_renal_cronica.csv  ← full N18 dataset (23,358 rows)

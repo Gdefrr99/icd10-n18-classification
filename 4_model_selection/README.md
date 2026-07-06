@@ -1,20 +1,19 @@
-# Step 4 — Model Prescreening and Selection
+# Step 4 — Model election
 
-Before full training (Step 5), we run a lightweight prescreening on 23 clinical Transformer models to identify the 4 best candidates. This avoids training each model for 10 epochs on the full 23K-note dataset.
+Before full training (Step 5), we run a lightweight selection on 25 clinical Transformer models to identify the 4 best candidates.
 
-## Prescreening setup
+## Selection setup
 
 | Parameter | Value |
 |---|---|
-| Training samples | 10,000 (random subset of train split) |
-| Validation samples | full validation set (2,336 notes) |
-| Epochs | 5 (with early stopping, patience=2) |
-| Threshold | 0.5 (fixed; no per-class tuning) |
+| Samples | 10,000 (random subset of train split) |
+| Epochs | 10 (with early stopping, patience=3) |
+| Threshold | 0.3 (fixed; no per-class tuning) |
 | Selection metric | F1-weighted on validation |
 
 ## Model list
 
-The 23 models evaluated in prescreening (file `4_model_selection/model_list.txt`):
+The 23 models evaluated in selection (file `4_model_selection/model_list.txt`):
 
 ```
 michiyasunaga/BioLinkBERT-large
@@ -42,42 +41,42 @@ allenai/longformer-base-4096
 yikuan8/Clinical-Longformer
 ```
 
-## Running prescreening
+## Running selection
 
 ```bash
 # Single model
-python 4_model_selection/prescreening.py \
+python 4_model_selection/selection.py \
     --data_dir   data/processed/ \
-    --output_dir results/prescreening/ \
+    --output_dir results/selection/ \
     --model_name michiyasunaga/BioLinkBERT-large
 
 # All 23 models (SLURM array job recommended)
 while IFS= read -r model; do
-    python 4_model_selection/prescreening.py \
+    python 4_model_selection/selection.py \
         --data_dir   data/processed/ \
-        --output_dir results/prescreening/ \
+        --output_dir results/selection/ \
         --model_name "$model"
 done < 4_model_selection/model_list.txt
 ```
 
-## Prescreening results (section 4.3 of the thesis)
+## Selection results (section 4.3 of the thesis)
 
 Top-10 models by F1-weighted on validation:
 
-| Rank | Model | F1-weighted | F1-micro |
+| Rank | Model | F1-micro | F1-weighted |
 |---|---|---|---|
-| 1 | **BioLinkBERT-large** | **0.781** | **0.793** |
-| 2 | **PubMedBERT_abstract** | 0.774 | 0.785 |
-| 3 | **RoBERTa-large-PM-M3-Voc-hf** | 0.769 | 0.780 |
-| 4 | **BlueBERT-pubmed-mimic-large** | 0.763 | 0.774 |
-| 5 | GatorTron-medium | 0.751 | 0.762 |
-| 6 | BioM-ELECTRA-Large | 0.748 | 0.759 |
-| 7 | BioLinkBERT-base | 0.744 | 0.756 |
-| 8 | PubMedBERT_abstract-fulltext | 0.741 | 0.753 |
-| 9 | BlueBERT-pubmed-mimic-base | 0.738 | 0.749 |
-| 10 | Bio_ClinicalBERT | 0.729 | 0.741 |
+| 1 | **BioLinkBERT-large** | **0.5490** | **0.5162** |
+| 2 | **RoBERTa-large-pubmed-mimic3-Voc-hf** | 0,5404 | 0,5091 |
+| 3 | **BlueBERT-pubmed-mimic-large-uncased** | 0,5278 | 0,4936 |
+| 4 | **PubMedBERT_abstract** | 0,5255 | 0,4737 |
+| 5 | SciBERT-scivocab-uncased | 0,5210 | 0,4690 |
+| 6 | RoBERTa-base-pubmed-mimic3-Voc-train-longer | 0,5156 | 0,4680 |
+| 7 | BioBERT-large-cased-v1.1 | 0,5083 | 0,4671 |
+| 8 | BioLinkBERT-base | 0,5231 | 0,4666 |
+| 9 | RoBERTa-base-pubmed-mimic3-Voc | 0,5172 | 0,4644 |
+| 10 | PubMedBERT_abstract_fulltext | 0,5193 | 0,4619 |
 
-**Selected for full training** (bold, top 4): BioLinkBERT-large, PubMedBERT_abstract, RoBERTa-large-PM-M3-Voc-hf, BlueBERT-pubmed-mimic-large-uncased.
+**Selected for full training** (bold, top 4): BioLinkBERT-large, RoBERTa-large-pubmed-mimic3-Voc-hf, BlueBERT-pubmed-mimic-large-uncased, PubMedBERT_abstract.
 
 These 4 models proceed to Steps 5 (chunking + max pooling on full notes) and 6 (training on MedGemma-27b-it summaries).
 
@@ -88,7 +87,7 @@ import json, pandas as pd
 from pathlib import Path
 
 records = []
-for p in Path("results/prescreening/").glob("*/prescreening_summary.json"):
+for p in Path("results/selection/").glob("*/selection_summary.json"):
     records.append(json.loads(p.read_text()))
 df = pd.DataFrame(records).sort_values("f1_weighted", ascending=False)
 print(df.to_string(index=False))

@@ -1,8 +1,10 @@
 # Paso 5 — Resumen clínico automático
 
-Pipeline en tres etapas: (a) selección de un subconjunto representativo de 1.000 notas para comparar modelos de resumen, (b) resumen de las 23.358 notas N18 con MedGemma-27B-it, y (c) ajuste fino de los clasificadores sobre los resúmenes resultantes.
+Pipeline en dos fases: (A) comparación de 4 modelos generativos sobre un subconjunto representativo de 1.000 notas, para elegir el mejor; (B) resumen de las 23.358 notas N18 completas con el modelo ganador y ajuste fino de los clasificadores sobre los resúmenes resultantes.
 
-## 5a. Muestreo estratificado (1.000 notas)
+## Fase A — Comparación de modelos de resumen sobre 1.000 muestras
+
+### 5a. Muestreo estratificado (1.000 notas)
 
 Selecciona 1.000 notas del dataset N18 completo preservando la distribución multietiqueta real, con sobremuestreo del código raro N18.1 hasta un mínimo de 20 muestras (Sección 4.5.2):
 
@@ -25,17 +27,62 @@ Distribución esperada (Tabla 4.4 de la memoria):
 | N18.5 | 2,4 % | 2,4 % |
 | N18.1 | 0,4 % | 2,3 % ← sobremuestreo deliberado para garantizar cobertura mínima |
 
-## 5b. Resumen con MedGemma-27B-it
+### 5b. Resumen de las 1.000 muestras con cada uno de los 4 modelos generativos
 
-### Por qué MedGemma-27B-it
+Los 4 modelos comparados (Sección 4.5.3) reciben el mismo prompt de sistema y los mismos parámetros de generación; solo cambia el modelo. Ejecutar una vez por modelo:
 
-Entre los 4 modelos generativos evaluados (Llama3-OpenBioLLM-8B, Bio-Medical-Llama-3-8B, MedGemma-1.5-4b-it, MedGemma-27B-it), se seleccionó MedGemma-27B-it porque:
-- Es el **único modelo que produce el 100 % de respuestas válidas** (1.000/1.000) sobre las 1.000 muestras.
-- Mantiene el 95 % de los resúmenes por debajo de 486 tokens (dentro del límite de 512 tokens de BERT).
-- Obtiene la **mayor precisión ROUGE-1** (0,855), lo que indica una alucinación mínima.
-- Produce las **mejores métricas de clasificación posteriores** al usarse para entrenamiento.
+```bash
+for MODEL in Llama3-OpenBioLLM-8B Bio-Medical-Llama-3-8B MedGemma-1.5-4b-it MedGemma-27B-it; do
+    python 5_summarization/summarize_1000.py \
+        --input_csv  data/processed/muestra_1000.csv \
+        --output_csv "data/processed/muestra_1000_summarized_${MODEL}.csv" \
+        --model      "$MODEL"
+done
+```
 
-### Requisitos
+> Los identificadores de HuggingFace de `Llama3-OpenBioLLM-8B`, `Bio-Medical-Llama-3-8B` y `MedGemma-1.5-4b-it` en `MODEL_REGISTRY` (dentro de `summarize_1000.py`) son la mejor referencia disponible; verifícalos contra la página del modelo o pasa `--model_id` para sobrescribirlos antes de lanzar una ejecución larga.
+
+Cada ejecución guarda checkpoints cada 50 notas y reanuda automáticamente si se interrumpe. Una fracción de las respuestas puede no ajustarse al formato esperado (vacías, demasiado cortas, o con códigos ICD-10 filtrados pese a la prohibición explícita); estas se detectan con una heurística y se reprocesan con una semilla de generación distinta (Sección 4.5.4).
+
+### 5c. Métricas ROUGE de cada modelo frente a las notas originales
+
+```bash
+for MODEL in Llama3-OpenBioLLM-8B Bio-Medical-Llama-3-8B MedGemma-1.5-4b-it MedGemma-27B-it; do
+    python 5_summarization/compute_rouge.py \
+        --original_csv   data/processed/muestra_1000.csv \
+        --summarized_csv "data/processed/muestra_1000_summarized_${MODEL}.csv" \
+        --model_name     "$MODEL"
+done
+```
+
+### 5d. Partición 70/10/20 de cada conjunto resumido y ajuste fino de los clasificadores
+
+Cada modelo produce un número distinto de resúmenes válidos (Tabla 4.5), por lo que cada conjunto de 1.000 muestras resumidas recibe su propia partición estratificada 70/10/20 (semilla 42):
+
+```bash
+python 5_summarization/build_1000_splits.py \
+    --summarized_csv data/processed/muestra_1000_summarized_MedGemma-27B-it.csv \
+    --output_dir     data/processed/summarized_1000/MedGemma-27B-it/
+```
+
+El ajuste fino de los 4 clasificadores Transformer sobre cada conjunto es análogo al Paso 4, usando `--no_chunking` (los resúmenes caben en 512 tokens) y apuntando `--data_dir` al directorio generado arriba:
+
+```bash
+python 4_chunking_max_pooling/train_chunking.py \
+    --data_dir   data/processed/summarized_1000/MedGemma-27B-it/ \
+    --output_dir models/summarized_1000/MedGemma-27B-it/ \
+    --model_name michiyasunaga/BioLinkBERT-large \
+    --no_chunking \
+    --thresholds 0.4 0.6
+```
+
+Repetir para los 4 modelos de resumen y los 4 clasificadores. El mejor modelo de resumen (Sección 5.5.1, Tabla 5.8) es el que, combinado con el mejor clasificador, obtiene las mejores métricas — en la memoria, **MedGemma-27B-it**.
+
+## Fase B — Escalado al dataset completo con el modelo ganador
+
+### 5e. Resumen de las 23.358 notas con MedGemma-27B-it
+
+Tras seleccionar MedGemma-27B-it en la Fase A (100 % de respuestas válidas, mejor precisión ROUGE-1, mejores métricas de clasificación posteriores), se extiende el resumen a las 22.358 notas restantes del dataset N18:
 
 - GPU: ≥ 40 GB VRAM (bfloat16). Dos A100 40 GB o una A100 80 GB.
 - Acceso en HuggingFace: solicitar aprobación en [huggingface.co/google/medgemma-27b-it](https://huggingface.co/google/medgemma-27b-it).
@@ -47,19 +94,9 @@ python 5_summarization/summarize_medgemma.py \
     --output_csv data/processed/ehr_n18_summarized.csv
 ```
 
-El script guarda checkpoints cada 50 notas y reanuda automáticamente si se interrumpe.
+### 5f. Reconstrucción de las particiones completas con las notas resumidas
 
-### Prompt de resumen
-
-El prompt del sistema instruye al modelo para producir un resumen **abstractivo**:
-- Conserva toda la información diagnósticamente relevante (diagnósticos, síntomas, procedimientos, analíticas).
-- Omite contenido administrativo/demográfico.
-- Máximo 400 palabras (≈ 512 tokens).
-- **No asigna códigos ICD-10** por sí mismo.
-
-## 5c. Reconstrucción de las particiones con las notas resumidas
-
-Sustituye el texto de `ehr_icd_{train,val,test}_clean.csv` por el resumen correspondiente, conservando la misma partición que en el Paso 1:
+Sustituye el texto de `ehr_icd_{train,val,test}_clean.csv` por el resumen correspondiente, conservando la misma partición que en el Paso 1 (a diferencia de 5d, aquí no se genera una partición nueva):
 
 ```bash
 python 5_summarization/build_summarized_splits.py \
@@ -68,7 +105,7 @@ python 5_summarization/build_summarized_splits.py \
     --output_dir     data/processed/summarized/
 ```
 
-## 5d. Ajuste fino de los clasificadores sobre los resúmenes
+### 5g. Ajuste fino de los clasificadores finales sobre los resúmenes completos
 
 Ver [Paso 4](../4_chunking_max_pooling/README.md) con el flag `--no_chunking`, apuntando `--data_dir` al directorio generado en el paso anterior.
 
@@ -84,6 +121,25 @@ Ver [Paso 4](../4_chunking_max_pooling/README.md) con el flag `--no_chunking`, a
 | Bio-Medical-Llama-3-8B | 995 | 0,803 | 0,049 | 0,088 | 0,422 | 0,022 | 0,039 | 0,567 | 0,030 | 0,054 |
 | MedGemma-1.5-4b-it | 955 | 0,845 | 0,111 | 0,193 | 0,434 | 0,056 | 0,097 | 0,518 | 0,068 | 0,118 |
 | MedGemma-27B-it | 1.000 | 0,855 | 0,102 | 0,179 | 0,397 | 0,047 | 0,082 | 0,482 | 0,057 | 0,100 |
+
+Todos los modelos generan resúmenes de alta precisión léxica (P-ROUGE-1 ≥ 0,70) y recall muy bajo (R-ROUGE-1 ≤ 0,11): son concisos y no reproducen el texto original de forma extensiva, el comportamiento deseable en un resumen abstractivo. MedGemma-27B-it es el único modelo con el 100 % de respuestas válidas y la mayor precisión ROUGE-1; MedGemma-1.5-4b-it tiene el F1-ROUGE-1 más alto pero con más varianza en la validez de las respuestas.
+
+### Mejores resultados de clasificación sobre las 1.000 muestras resumidas (Tabla 5.8)
+
+| Métrica | Valor | Modelo clasificación | Umbral | Modelo de resumen |
+|---|---|---|---|---|
+| Accuracy | 0,7000 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| Precisión micro | 0,7714 | PubMedBERT_abstract | 0,6 | MedGemma-27B-it |
+| Precisión macro | 0,6344 | BioLinkBERT-large | 0,6 | MedGemma-27B-it |
+| Precisión weighted | 0,7736 | BioLinkBERT-large | 0,6 | MedGemma-27B-it |
+| Recall micro | 0,7065 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| Recall macro | 0,4683 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| Recall weighted | 0,7065 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| F1 micro | 0,7226 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| F1 macro | 0,5592 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+| F1 weighted | 0,6966 | PubMedBERT_abstract | 0,4 | MedGemma-27B-it |
+
+En todas las métricas, el mejor modelo de resumen resulta ser MedGemma-27B-it.
 
 ### Comparativa: Max Pooling (notas completas) vs. resúmenes (23.358 notas, test N18)
 

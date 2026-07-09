@@ -105,8 +105,11 @@ icd10-n18-classification/
 ├── 5_summarization/
 │   ├── README.md
 │   ├── sampling.py                   ← selección estratificada de 1.000 muestras
-│   ├── summarize_medgemma.py         ← resumen con MedGemma-27B-it
-│   └── build_summarized_splits.py    ← reconstruye train/val/test con los resúmenes
+│   ├── summarize_1000.py             ← resume las 1.000 muestras con cada uno de los 4 modelos
+│   ├── compute_rouge.py              ← métricas ROUGE de cada modelo frente a las notas originales
+│   ├── build_1000_splits.py          ← partición 70/10/20 de cada conjunto de 1.000 resumidas
+│   ├── summarize_medgemma.py         ← resumen del dataset completo con el modelo ganador
+│   └── build_summarized_splits.py    ← reconstruye train/val/test completos con los resúmenes
 │
 ├── 6_classical_baseline/
 │   ├── README.md
@@ -182,6 +185,8 @@ python 4_chunking_max_pooling/train_chunking.py \
 
 ### Paso 5 — Resumen clínico automático + clasificación sobre los resúmenes
 
+Ver [5_summarization/README.md](5_summarization/README.md) para el detalle completo. Resumen de las sub-fases:
+
 **5a. Muestreo estratificado (1.000 notas):**
 
 ```bash
@@ -190,7 +195,31 @@ python 5_summarization/sampling.py \
     --output_csv data/processed/muestra_1000.csv
 ```
 
-**5b. Resumen con MedGemma-27B-it (requiere ≥ 40 GB de VRAM):**
+**5b. Resumen de las 1.000 muestras con los 4 modelos generativos y 5c. ROUGE de cada uno:**
+
+```bash
+for MODEL in Llama3-OpenBioLLM-8B Bio-Medical-Llama-3-8B MedGemma-1.5-4b-it MedGemma-27B-it; do
+    python 5_summarization/summarize_1000.py \
+        --input_csv  data/processed/muestra_1000.csv \
+        --output_csv "data/processed/muestra_1000_summarized_${MODEL}.csv" \
+        --model      "$MODEL"
+
+    python 5_summarization/compute_rouge.py \
+        --original_csv   data/processed/muestra_1000.csv \
+        --summarized_csv "data/processed/muestra_1000_summarized_${MODEL}.csv" \
+        --model_name     "$MODEL"
+done
+```
+
+**5d. Partición 70/10/20 de cada conjunto de 1.000 resumidas y ajuste fino comparativo:**
+
+```bash
+python 5_summarization/build_1000_splits.py \
+    --summarized_csv data/processed/muestra_1000_summarized_MedGemma-27B-it.csv \
+    --output_dir     data/processed/summarized_1000/MedGemma-27B-it/
+```
+
+**5e. Resumen del dataset N18 completo con el modelo ganador, MedGemma-27B-it (requiere ≥ 40 GB de VRAM):**
 
 ```bash
 python 5_summarization/summarize_medgemma.py \
@@ -198,7 +227,7 @@ python 5_summarization/summarize_medgemma.py \
     --output_csv data/processed/ehr_n18_summarized.csv
 ```
 
-**5c. Reconstruir las particiones con el texto resumido:**
+**5f. Reconstruir las particiones completas con el texto resumido:**
 
 ```bash
 python 5_summarization/build_summarized_splits.py \
@@ -207,7 +236,7 @@ python 5_summarization/build_summarized_splits.py \
     --output_dir     data/processed/summarized/
 ```
 
-**5d. Ajustar los clasificadores sobre los resúmenes** (usar [Paso 4](4_chunking_max_pooling/README.md) con `--no_chunking`):
+**5g. Ajustar los clasificadores finales sobre los resúmenes completos** (usar [Paso 4](4_chunking_max_pooling/README.md) con `--no_chunking`):
 
 ```bash
 python 4_chunking_max_pooling/train_chunking.py \
@@ -296,3 +325,7 @@ Si utilizas este código o estos resultados en tu trabajo, cita por favor:
 - Peng et al. (2019). BlueBERT. *ACL 2019*.
 - Google DeepMind (2025). MedGemma. [Disponible aquí](https://developers.google.com/health-ai-developer-foundations/medgemma).
 - Sundararajan et al. (2017). Integrated Gradients. *ICML 2017*.
+
+---
+
+*Universidad de León · Grado en Ingeniería de Datos e Inteligencia Artificial · Trabajo de Fin de Grado · Junio 2026*

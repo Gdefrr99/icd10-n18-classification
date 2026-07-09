@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Sustituye el texto original de las particiones train/val/test de N18 por el
-resumen generado con MedGemma-27B-it (Sección 4.5.5), conservando la misma
+resumen generado con MedGemma-27B-it, conservando la misma
 partición (subject_id, hadm_id) que 1_preprocessing/preprocess.py, de modo
 que la comparación con la segmentación + Max Pooling (Paso 4) sea directa.
 

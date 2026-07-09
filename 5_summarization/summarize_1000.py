@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Resumen de las 1.000 muestras seleccionadas con cada uno de los 4 modelos
-generativos evaluados (Sección 4.5.3 de la memoria).
+generativos evaluados.
 
 Generaliza summarize_medgemma.py para poder ejecutarse con cualquiera de los
 4 modelos comparados en esta fase. El prompt de sistema, los parámetros de
 generación y la heurística de validación/reintento son idénticos para los 4
-modelos (Sección 4.5.3-4.5.4), de forma que la única variable entre
+modelos, de forma que la única variable entre
 ejecuciones es el modelo generativo.
 
 Modelos comparados:
@@ -51,7 +51,7 @@ set_seed(42)
 MODEL_REGISTRY = {
     "Llama3-OpenBioLLM-8B":   ("aaditya/Llama3-OpenBioLLM-8B",        "text-generation"),
     "Bio-Medical-Llama-3-8B": ("ContactDoctor/Bio-Medical-Llama-3-8B", "text-generation"),
-    "MedGemma-1.5-4b-it":     ("google/medgemma-4b-it",                "image-text-to-text"),
+    "MedGemma-1.5-4b-it":     ("google/medgemma-1.5-4b-it",                "image-text-to-text"),
     "MedGemma-27B-it":        ("google/medgemma-27b-it",               "image-text-to-text"),
 }
 

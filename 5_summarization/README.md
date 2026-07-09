@@ -6,7 +6,7 @@ Pipeline en dos fases: (A) comparación de 4 modelos generativos sobre un subcon
 
 ### 5a. Muestreo estratificado (1.000 notas)
 
-Selecciona 1.000 notas del dataset N18 completo preservando la distribución multietiqueta real, con sobremuestreo del código raro N18.1 hasta un mínimo de 20 muestras (Sección 4.5.2):
+Selecciona 1.000 notas del dataset N18 completo preservando la distribución multietiqueta real, con sobremuestreo del código minoritario N18.1 hasta un mínimo de 20 muestras:
 
 ```bash
 python 5_summarization/sampling.py \
@@ -15,7 +15,7 @@ python 5_summarization/sampling.py \
     --n_samples  1000
 ```
 
-Distribución esperada (Tabla 4.4 de la memoria):
+Distribución esperada:
 
 | Código | Dataset | Muestra |
 |---|---|---|
@@ -29,7 +29,7 @@ Distribución esperada (Tabla 4.4 de la memoria):
 
 ### 5b. Resumen de las 1.000 muestras con cada uno de los 4 modelos generativos
 
-Los 4 modelos comparados (Sección 4.5.3) reciben el mismo prompt de sistema y los mismos parámetros de generación; solo cambia el modelo. Ejecutar una vez por modelo:
+Los 4 modelos comparados reciben el mismo prompt de sistema y los mismos parámetros de generación; solo cambia el modelo. Ejecutar una vez por modelo:
 
 ```bash
 for MODEL in Llama3-OpenBioLLM-8B Bio-Medical-Llama-3-8B MedGemma-1.5-4b-it MedGemma-27B-it; do
@@ -40,9 +40,7 @@ for MODEL in Llama3-OpenBioLLM-8B Bio-Medical-Llama-3-8B MedGemma-1.5-4b-it MedG
 done
 ```
 
-> Los identificadores de HuggingFace de `Llama3-OpenBioLLM-8B`, `Bio-Medical-Llama-3-8B` y `MedGemma-1.5-4b-it` en `MODEL_REGISTRY` (dentro de `summarize_1000.py`) son la mejor referencia disponible; verifícalos contra la página del modelo o pasa `--model_id` para sobrescribirlos antes de lanzar una ejecución larga.
-
-Cada ejecución guarda checkpoints cada 50 notas y reanuda automáticamente si se interrumpe. Una fracción de las respuestas puede no ajustarse al formato esperado (vacías, demasiado cortas, o con códigos ICD-10 filtrados pese a la prohibición explícita); estas se detectan con una heurística y se reprocesan con una semilla de generación distinta (Sección 4.5.4).
+Cada ejecución guarda checkpoints cada 50 notas y reanuda automáticamente si se interrumpe. Una fracción de las respuestas puede no ajustarse al formato esperado (vacías, demasiado cortas, o con códigos ICD-10 filtrados pese a la prohibición explícita); estas se detectan con una heurística y se reprocesan con una semilla de generación distinta.
 
 ### 5c. Métricas ROUGE de cada modelo frente a las notas originales
 
@@ -57,7 +55,7 @@ done
 
 ### 5d. Partición 70/10/20 de cada conjunto resumido y ajuste fino de los clasificadores
 
-Cada modelo produce un número distinto de resúmenes válidos (Tabla 4.5), por lo que cada conjunto de 1.000 muestras resumidas recibe su propia partición estratificada 70/10/20 (semilla 42):
+Cada modelo produce un número distinto de resúmenes válidos, por lo que cada conjunto de 1.000 muestras resumidas recibe su propia partición estratificada 70/10/20 (semilla 42):
 
 ```bash
 python 5_summarization/build_1000_splits.py \
@@ -76,7 +74,7 @@ python 4_chunking_max_pooling/train_chunking.py \
     --thresholds 0.4 0.6
 ```
 
-Repetir para los 4 modelos de resumen y los 4 clasificadores. El mejor modelo de resumen (Sección 5.5.1, Tabla 5.8) es el que, combinado con el mejor clasificador, obtiene las mejores métricas — en la memoria, **MedGemma-27B-it**.
+Repetir para los 4 modelos de resumen y los 4 clasificadores. El mejor modelo de resumen es el que, combinado con el mejor clasificador, obtiene las mejores métricas: **MedGemma-27B-it**.
 
 ## Fase B — Escalado al dataset completo con el modelo ganador
 

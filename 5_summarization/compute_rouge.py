@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Métricas ROUGE de los resúmenes generados sobre las 1.000 muestras, frente a
-las notas originales (Sección 4.8.2 y Tabla 5.7 de la memoria).
+las notas originales.
 
 Calcula ROUGE-1, ROUGE-2 y ROUGE-L (precisión, recall y F1) promediadas sobre
 las notas con resumen válido. Una precisión ROUGE elevada indica que el

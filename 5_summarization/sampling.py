@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Selección estratificada de 1.000 muestras para la fase de evaluación de
-modelos de resumen (Sección 4.5.2 de la memoria).
+modelos de resumen.
 
 Selecciona 1.000 notas del dataset N18 completo reproduciendo la distribución
 multietiqueta real de cada código. Los códigos raros (frecuencia < 1 %, en la

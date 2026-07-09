@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 Partición estratificada 70/10/20 de un conjunto de 1.000 muestras resumidas
-por un modelo generativo concreto (Sección 4.5.3-4.5.4 de la memoria).
+por un modelo generativo concreto.
 
 A diferencia de build_summarized_splits.py (que reutiliza la partición del
 dataset N18 completo, Paso 1), aquí cada uno de los 4 modelos de resumen
-genera un número distinto de resúmenes válidos (Tabla 4.5: entre 933 y 1.000
-de las 1.000 muestras), por lo que cada conjunto resumido recibe su propia
+genera un número distinto de resúmenes válidos,
+ por lo que cada conjunto resumido recibe su propia
 partición 70/10/20 estratificada (semilla 42), igual que en
 1_preprocessing/preprocess.py. Esto permite ajustar los 4 clasificadores
-Transformer sobre cada uno de los 4 conjuntos y comparar su rendimiento
-(Tabla 5.8) para identificar el mejor modelo de resumen.
+Transformer sobre cada uno de los 4 conjuntos y comparar su rendimiento 
+para identificar el mejor modelo de resumen.
 
 Uso:
     python 5_summarization/build_1000_splits.py \

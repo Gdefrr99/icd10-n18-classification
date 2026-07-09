@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Construcción de los lotes de evaluación para los modelos Gemini (Sección 4.1.2).
+Construcción de los lotes de evaluación para los modelos Gemini.
 
 Para cada grupo de riesgo HCC se muestrean 500 notas de alta que contienen al
 menos un código del rango del grupo, organizadas en 10 lotes de 50 notas.
-Cada lote se escribe como un archivo de texto con el prompt ya completado
-(Anexo A.1 o A.2), listo para copiar y pegar en la interfaz web de Google
+Cada lote se escribe como un archivo de texto con el prompt ya completado, 
+listo para copiar y pegar en la interfaz web de Google
 Gemini (gemini.google.com) con la opción de "chat temporal" activada.
 
-IMPORTANTE — motivo de este flujo manual: en la memoria (Sección 4.1.3) la
+IMPORTANTE — motivo de este flujo manual: en la memoria la
 evaluación se realizó pegando manualmente el contenido de cada lote en
 gemini.google.com, y NO mediante la API de Gemini. Esta elección responde a
 que los chats temporales no se emplean para reentrenar los modelos y los
@@ -24,7 +24,7 @@ Uso:
     python 2_llm_hcc_evaluation/build_batches.py \
         --data_csv   data/processed/diagnoses_icd10.csv \
         --output_dir results/llm/batches/ \
-        --group      enfermedad_renal_cronica \
+        --group      chronic_kidney_disease \
         --strategy   specific \
         --n_notes    500 \
         --batch_size 50

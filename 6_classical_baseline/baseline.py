@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Línea base clásica multietiqueta para la clasificación ICD-10-CM del
-subgrupo N18 (Sección 4.6 de la memoria).
+subgrupo N18.
 
 Representaciones: TF-IDF, BM25, BM25+
 Clasificadores:   Regresión Logística, LinearSVC (One-vs-Rest)

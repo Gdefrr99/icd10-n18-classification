@@ -6,7 +6,7 @@ Une las tablas de MIMIC-IV, filtra los registros ICD-10-CM, aplica la normalizac
 
 1. Carga `diagnoses_icd.csv(.gz)` y filtra a `icd_version = 10`.
 2. Agrupa los códigos ICD-10-CM por ingreso y cruza con `discharge.csv(.gz)` mediante `(subject_id, hadm_id)`.
-3. Aplica la normalización de texto clínico (Sección 3.2 de la memoria) a **todas** las notas:
+3. Aplica la normalización de texto clínico a **todas** las notas:
    - Elimina cabeceras administrativas (`Name: ___`, `Admission Date: ___`, etc.).
    - Sustituye los marcadores de anonimización `___` restantes por `[UNK]`.
    - Expande abreviaturas clínicas: `s/p → status post`, `c/o → complains of`, `h/o → history of`, `w/o → without`, `w/ → with`, `pt → patient`.
@@ -19,7 +19,7 @@ Une las tablas de MIMIC-IV, filtra los registros ICD-10-CM, aplica la normalizac
 
 ## Uso
 
-Los dos archivos de MIMIC-IV pueden pasarse tal cual se descargan de PhysioNet, en formato `.csv.gz` — pandas infiere la compresión a partir de la extensión, por lo que **no es necesario descomprimirlos manualmente**:
+Los dos archivos de MIMIC-IV pueden pasarse tal cual se descargan de PhysioNet, en formato `.csv.gz`; pandas infiere la compresión a partir de la extensión, por lo que **no es necesario descomprimirlos manualmente**:
 
 ```bash
 python 1_preprocessing/preprocess.py \

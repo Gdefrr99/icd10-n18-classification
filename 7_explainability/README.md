@@ -1,6 +1,6 @@
 # Paso 7 — Explicabilidad (Noise Tunnel + Gradientes Integrados)
 
-Módulo de explicabilidad post-hoc para los clasificadores N18.x ajustados. Identifica los fragmentos de texto de una nota de alta que más sustentan cada código ICD-10-CM predicho (Sección 4.7 de la memoria).
+Módulo de explicabilidad post-hoc para los clasificadores N18.x ajustados. Identifica los fragmentos de texto de una nota de alta que más sustentan cada código ICD-10-CM predicho.
 
 ## Método
 
@@ -11,8 +11,6 @@ Módulo de explicabilidad post-hoc para los clasificadores N18.x ajustados. Iden
 **Extracción de spans en dos pasadas**:
 1. **Primera pasada** — segmenta la nota en líneas/oraciones, calcula la suma de atribuciones con signo por segmento, normaliza a [0, 1] y selecciona los top-N segmentos por encima de `MIN_SPAN_SCORE`.
 2. **Segunda pasada** — para cada span seleccionado, extrae sub-frases dividiendo por paréntesis, comas y conjunciones coordinantes. Puntúa cada sub-frase por **atribución positiva media por token** (suma / nº de tokens) — el promedio evita favorecer sub-frases más largas. Devuelve la sub-frase con mayor puntuación.
-
-**Agregación por dimensión de embedding**: suma con signo (no norma L2). Esto preserva la dirección de la atribución: los tokens positivos apoyan el código, los negativos actúan como evidencia contraria.
 
 ## Configuración
 
@@ -31,9 +29,9 @@ Editar las constantes al inicio de `icd10_explainability.py` antes de ejecutar:
 | `CONF_HIGH` | `0.95` | Umbral de confianza alta |
 | `CONF_MED` | `0.85` | Umbral de confianza media |
 
-## Selección de N_IG_STEPS (Sección 4.7.3 y 5.7)
+## Selección de N_IG_STEPS
 
-La memoria evalúa la estabilidad de los spans variando N_IG_STEPS ∈ {10, 20, 50, 75, 100}. Con evidencia diagnóstica concentrada y explícita, el span de mayor atribución es idéntico para cualquier valor evaluado. Con evidencia distribuida y confianza moderada del modelo, los top-5 spans cambian entre configuraciones, y las configuraciones con menor error de aproximación (20 y 75) son las que capturan más spans clínicamente relevantes. El valor por defecto de este script, `N_IG_STEPS=20`, corresponde a la configuración usada para los resultados finales.
+En el TFG se evalúa la estabilidad de los spans variando N_IG_STEPS ∈ {10, 20, 50, 75, 100}. Con evidencia diagnóstica concentrada y explícita, el span de mayor atribución es idéntico para cualquier valor evaluado. Con evidencia distribuida y confianza moderada del modelo, los top-5 spans cambian entre configuraciones, y las configuraciones con menor error de aproximación (20 y 75) son las que capturan más spans clínicamente relevantes. El valor por defecto de este script, `N_IG_STEPS=20`, corresponde a la configuración usada para los resultados finales.
 
 ## Requisitos de hardware
 

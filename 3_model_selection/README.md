@@ -1,6 +1,6 @@
 # Paso 3 — Selección de modelos
 
-Antes del entrenamiento completo (Pasos 4 y 5), se ejecuta una selección ligera sobre 25 modelos Transformer biomédicos y clínicos para identificar los 4 mejores candidatos (Sección 4.3 de la memoria).
+Antes del entrenamiento completo (Pasos 4 y 5), se ejecuta una selección sobre 25 modelos Transformer biomédicos y clínicos para identificar los 4 mejores candidatos.
 
 ## Construcción del conjunto de selección
 
@@ -29,7 +29,7 @@ python 3_model_selection/build_selection_dataset.py \
 | Función de pérdida | Binary Cross-Entropy estándar |
 | Weight decay | 0.01 |
 | Warmup ratio | 0.1 |
-| Umbral de aceptación | 0.3 (fijo, sin ajuste por clase) |
+| Umbral de aceptación | 0.3 |
 | Métrica de selección | F1-weighted en validación |
 
 ## Lista de modelos
@@ -56,7 +56,7 @@ while IFS= read -r model; do
 done < 3_model_selection/model_list.txt
 ```
 
-## Resultados de la selección (Anexo B de la memoria)
+## Resultados de la selección
 
 Ranking completo de los 25 modelos ordenados por F1-weighted en test. Los 4 modelos en negrita son los seleccionados para el entrenamiento completo sobre N18 (Pasos 4 y 5):
 

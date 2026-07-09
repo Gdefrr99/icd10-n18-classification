@@ -16,7 +16,7 @@
 
 Colocar ambos archivos, **en su formato `.csv.gz` original, sin descomprimir**, en `data/raw/`. El script de preprocesado infiere la compresión a partir de la extensión.
 
-## Estructura esperada tras el preprocesado
+## Estructura esperada tras aplicar todos los pasos del pipeline
 
 ```
 data/
@@ -42,7 +42,6 @@ Tras el preprocesado, el conjunto de trabajo N18 contiene:
 - **7 etiquetas**: N18.1, N18.2, N18.3, N18.4, N18.5, N18.6, N18.9 (estadios de la ERC).
 - **110 notas** presentan dos códigos N18 simultáneamente; el resto presenta uno solo.
 - Se elimina 1 nota adicional por contener un código N18 duplicado (23.359 → 23.358).
-- Longitud media: ~3.162 tokens (tokenizador BioLinkBERT-large) — de 6 a 7 veces el límite de 512 tokens de BERT.
 
 ### Distribución de etiquetas en el conjunto de test (4.670 notas, 4.694 etiquetas)
 

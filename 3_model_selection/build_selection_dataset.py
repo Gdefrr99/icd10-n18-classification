@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Construcción del conjunto de datos para la selección de modelos (Sección 4.3.1).
+Construcción del conjunto de datos para la selección de modelos.
 
 A diferencia del resto del pipeline, este paso NO usa el subgrupo N18: parte
 del dataset completo ICD-10-CM (122.288 notas, generado por
 1_preprocessing/preprocess.py) y construye un subconjunto de 10.000 notas
 etiquetadas con al menos 3 de los 50 códigos ICD-10-CM más frecuentes,
 definiendo así un espacio de 50 etiquetas posibles. Este subconjunto
-reducido permite evaluar de forma eficiente las 25 arquitecturas Transformer
-candidatas antes de entrenar los 4 modelos finales sobre el N18 completo.
+reducido permite evaluar las 25 arquitecturas Transformer
+candidatas antes de entrenar los 4 modelos finales sobre el grupo N18.
 
 Uso:
     python 3_model_selection/build_selection_dataset.py \

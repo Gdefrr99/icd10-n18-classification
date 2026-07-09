@@ -1,17 +1,17 @@
 # Paso 2 — Evaluación con grandes modelos de lenguaje (13 grupos de riesgo HCC)
 
-Antes de entrenar modelos especializados, la memoria evalúa hasta qué punto un LLM generalista sin ajuste fino es capaz de asignar códigos ICD-10-CM en las 13 categorías CMS-HCC de mayor impacto clínico-económico (Sección 4.1). El grupo con mejor resultado, Enfermedad Renal Crónica (N18), es el que se selecciona como foco del resto del proyecto (Sección 4.2).
+Antes de entrenar modelos especializados, la memoria evalúa hasta qué punto un LLM generalista sin ajuste fino es capaz de asignar códigos ICD-10-CM en las 13 categorías CMS-HCC de mayor impacto clínico-económico. El grupo con mejor resultado, Enfermedad Renal Crónica (N18), es el que se selecciona como foco del resto del proyecto.
 
 ## Protocolo — flujo manual, no por API
 
-**Este paso no llama a ninguna API de LLM.** En la memoria (Sección 4.1.3), la evaluación se realizó pegando manualmente cada lote en la interfaz web de [gemini.google.com](https://gemini.google.com), con la opción de **chat temporal** activada, en lugar de usar la API de Gemini. Esta elección responde a un criterio de cumplimiento normativo: los chats temporales no se usan para reentrenar los modelos y los datos se retienen solo un tiempo limitado, lo que evita que las notas de MIMIC-IV (aunque anonimizadas conforme a HIPAA Safe Harbor) se incorporen al corpus de entrenamiento de un modelo de terceros. Usar la API, en cambio, generaría una relación de *business associate* que exigiría un acuerdo formal bajo HIPAA (Sección 9.1).
+**Este paso no llama a ninguna API de LLM.** La evaluación se realizó pegando manualmente cada lote en la interfaz web de [gemini.google.com](https://gemini.google.com), con la opción de **chat temporal** activada, en lugar de usar la API de Gemini. Esta elección responde a un criterio de cumplimiento normativo: los chats temporales no se usan para reentrenar los modelos y los datos se retienen solo un tiempo limitado, lo que evita que las notas de MIMIC-IV (aunque anonimizadas conforme a HIPAA Safe Harbor) se incorporen al corpus de entrenamiento de un modelo de terceros. Usar la API, en cambio, generaría una relación de *business associate* que exigiría un acuerdo formal bajo HIPAA.
 
 Por ello, este repositorio reproduce el protocolo real en dos scripts independientes:
 
-1. **`build_batches.py`** — construye, para un grupo de riesgo y una estrategia de prompt, 500 notas en 10 lotes de 50, cada uno como un archivo de texto con el prompt ya completado (Anexo A.1 o A.2), listo para copiar y pegar en un chat temporal de Gemini.
-2. **`score_jaccard.py`** — una vez copiada de vuelta la respuesta JSON del modelo en `lote_XX_response.json`, calcula el índice de Jaccard sobre multiconjuntos (Sección 4.8.1).
+1. **`build_batches.py`** — construye, para un grupo de riesgo y una estrategia de prompt, 500 notas en 10 lotes de 50, cada uno como un archivo de texto con el prompt ya completado, listo para copiar y pegar en un chat temporal de Gemini.
+2. **`score_jaccard.py`** — una vez copiada de vuelta la respuesta JSON del modelo en `lote_XX_response.json`, calcula el índice de Jaccard sobre multiconjuntos.
 
-## Construcción de los conjuntos de evaluación (Sección 4.1.2)
+## Construcción de los conjuntos de evaluación
 
 Para cada uno de los 13 grupos de riesgo (definidos en `hcc_groups.py`) se construye un conjunto de 500 notas de alta seleccionadas aleatoriamente (semilla 42) del subconjunto ICD-10-CM completo de MIMIC-IV, con la condición de que cada nota contenga al menos un código del rango del grupo:
 
@@ -19,15 +19,15 @@ Para cada uno de los 13 grupos de riesgo (definidos en `hcc_groups.py`) se const
 python 2_llm_hcc_evaluation/build_batches.py \
     --data_csv   data/processed/diagnoses_icd10.csv \
     --output_dir results/llm/batches/ \
-    --group      enfermedad_renal_cronica \
+    --group      chronic_kidney_disease \
     --strategy   specific \
     --n_notes    500 \
     --batch_size 50
 ```
 
-Esto genera 10 archivos `lote_01.txt` … `lote_10.txt` en `results/llm/batches/enfermedad_renal_cronica/specific/`. Cada uno debe pegarse en un chat temporal nuevo de gemini.google.com; la respuesta JSON del modelo se guarda como `lote_01_response.json`, etc.
+Esto genera 10 archivos `lote_01.txt` … `lote_10.txt` en `results/llm/batches/chronic_kidney_disease/specific/`. Cada uno debe pegarse en un chat temporal nuevo de gemini.google.com; la respuesta JSON del modelo se guarda como `lote_01_response.json`, etc.
 
-## Estrategias de prompting (Anexo A)
+## Estrategias de prompting
 
 - **Prompt específico** (`--strategy specific`, Anexo A.1): instruye al modelo para identificar únicamente diagnósticos del rango de códigos del grupo evaluado, devolviendo solo los 3 primeros caracteres de cada código.
 - **Prompt general** (`--strategy general`, Anexo A.2): instruye al modelo para identificar y mapear **todos** los diagnósticos de la nota a códigos ICD-10-CM, sin restricción de rango; los códigos del grupo de interés se filtran después.
@@ -39,12 +39,12 @@ En ambas estrategias se procesan lotes de 50 notas por interacción (10 interacc
 - **Gemini 2.5 Flash** — prompt específico, sobre los 13 grupos de riesgo.
 - **Gemini 3 Pro** — prompt específico y general, sobre 6 de los 13 grupos.
 
-## Métrica: índice de Jaccard sobre multiconjuntos (Sección 4.8.1)
+## Métrica: índice de Jaccard sobre multiconjuntos
 
 Para una nota, sean A el multiconjunto de códigos reales (a nivel de categoría de 3 caracteres) y B el multiconjunto de códigos predichos:
 
 ```
-J(A, B) = Σ min(mult_A(x), mult_B(x)) / Σ max(mult_A(x), mult_B(x))
+J(A, B) = Σ_x min(mult_A(x), mult_B(x)) / Σ_x max(mult_A(x), mult_B(x))
 ```
 
 Se calculan dos variantes, promediadas sobre las notas del grupo:
@@ -58,7 +58,7 @@ python 2_llm_hcc_evaluation/score_jaccard.py \
     --group       enfermedad_renal_cronica
 ```
 
-## Resultados (Sección 5.1 de la memoria)
+## Resultados
 
 ### Gemini 2.5 Flash, prompt específico — los 13 grupos de riesgo HCC
 
@@ -93,4 +93,4 @@ Los grupos con terminología más delimitada (condiciones psiquiátricas, EPOC, 
 | EPOC y trastornos pulmonares | J41, J42, J43, J44, J45, J47, J84 | 0,5275 | 0,4972 | **0,7498** |
 | Oncología | C | 0,2656 | **0,6957** | 0,6796 |
 
-Gemini 3 Pro supera sistemáticamente a Gemini 2.5 Flash con prompt específico (salvo en EPOC). El prompt general mejora de forma muy significativa sobre el específico en casi todos los grupos: el modelo razona en lenguaje clínico natural sobre la nota completa, en lugar de tener que decidir simultáneamente si un hallazgo es relevante y si pertenece al rango solicitado. El resultado más alto, Enfermedad Renal Crónica con prompt general (J_real = 0,8260), motiva la selección de N18 como subgrupo de estudio para el resto del proyecto (Sección 4.2).
+Gemini 3 Pro supera sistemáticamente a Gemini 2.5 Flash con prompt específico (salvo en EPOC). El prompt general mejora de forma muy significativa sobre el específico en casi todos los grupos: el modelo razona en lenguaje clínico natural sobre la nota completa, en lugar de tener que decidir simultáneamente si un hallazgo es relevante y si pertenece al rango solicitado. El resultado más alto, Enfermedad Renal Crónica con prompt general (J_real = 0,8260), motiva la selección de N18 como subgrupo de estudio para el resto del proyecto.

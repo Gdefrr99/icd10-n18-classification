@@ -12,52 +12,52 @@ HCC_GROUPS = {
         "nombre": "Diabetes mellitus",
         "prefijos": ["E08", "E09", "E10", "E11", "E13"],
     },
-    "insuficiencia_cardiaca":       {
-        "nombre": "Insuficiencia cardíaca (CHF)",
+    "congestive_heart_failure":       {
+        "nombre": "Congestive heart failure (CHF)",
         "prefijos": ["I11", "I42", "I50"],
     },
-    "enfermedad_vascular":          {
-        "nombre": "Enfermedad vascular",
+    "vascular_disease":          {
+        "nombre": "Vascular disease",
         "prefijos": ["I25", "I70", "I71", "I72", "I73"],
     },
-    "enfermedad_renal_cronica":     {
-        "nombre": "Enfermedad renal crónica",
+    "chronic_kidney_disease":     {
+        "nombre": "Chronic kidney disease (CKD)",
         "prefijos": ["N18"],
     },
-    "epoc_trastornos_pulmonares":   {
-        "nombre": "EPOC y trastornos pulmonares",
+    "copd_and_lung_disorders":   {
+        "nombre": "COPD and lung disorders",
         "prefijos": ["J41", "J42", "J43", "J44", "J45", "J47", "J84"],
     },
-    "oncologia":                    {
-        "nombre": "Oncología",
+    "oncology":                    {
+        "nombre": "Oncology",
         "prefijos": ["C"],
     },
-    "condiciones_psiquiatricas":    {
-        "nombre": "Condiciones psiquiátricas mayores",
+    "major_psychiatric_conditions":    {
+        "nombre": "Major psychiatric conditions",
         "prefijos": ["F20", "F21", "F22", "F23", "F24", "F25", "F28", "F29", "F30", "F31", "F32", "F33"],
     },
-    "condiciones_neurologicas":     {
-        "nombre": "Condiciones neurológicas",
+    "neurological_conditions":     {
+        "nombre": "Neurological conditions",
         "prefijos": ["G20", "G30", "G35", "G40", "G80", "G81", "G82", "G83"],
     },
-    "enfermedad_hepatica":          {
-        "nombre": "Enfermedad hepática",
+    "hepatic_disease":          {
+        "nombre": "Hepatic disease",
         "prefijos": ["K7", "B18"],
     },
     "vih":                          {
         "nombre": "VIH",
         "prefijos": ["B20"],
     },
-    "amputaciones":                 {
-        "nombre": "Amputaciones",
+    "amputations":                 {
+        "nombre": "Amputations",
         "prefijos": ["Z89"],
     },
-    "trastornos_hematologicos":     {
-        "nombre": "Trastornos hematológicos severos",
+    "hematological_disorders":     {
+        "nombre": "Severe hematological disorders",
         "prefijos": ["D57", "D61", "D63", "D66", "D67", "D69"],
     },
-    "infecciones_severas":          {
-        "nombre": "Infecciones severas",
+    "severe_infections":          {
+        "nombre": "Severe infections",
         "prefijos": ["A40", "A41"],
     },
 }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Cálculo del índice de Jaccard sobre multiconjuntos para las respuestas de los
-modelos Gemini (Sección 4.8.1 de la memoria).
+modelos Gemini.
 
 Para cada nota, sea A el multiconjunto de códigos reales (a nivel de
 categoría de 3 caracteres) y B el multiconjunto de códigos predichos por el
@@ -15,7 +15,7 @@ Se calculan dos variantes por nota:
   - J_ambos: tanto A como B se restringen al rango de códigos del grupo.
 
 El resultado por grupo es la media de J_real y J_ambos sobre las notas
-evaluadas (Tablas 5.1 y 5.2 de la memoria).
+evaluadas.
 
 Espera, para cada lote generado por build_batches.py, un archivo
 `lote_XX_response.json` con el JSON devuelto por Gemini (extraído

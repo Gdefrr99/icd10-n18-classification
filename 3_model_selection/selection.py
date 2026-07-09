@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Selección de modelos: ajuste fino de 25 Transformers biomédicos sobre el
-conjunto de 10.000 notas / 50 códigos más frecuentes (Sección 4.3).
+conjunto de 10.000 notas / 50 códigos más frecuentes.
 
 Este subconjunto NO está restringido al subgrupo N18: se construye a partir
 del dataset completo ICD-10-CM mediante
-3_model_selection/build_selection_dataset.py. El objetivo es identificar de
-forma eficiente qué 4 arquitecturas ofrecen el mayor rendimiento de base
+3_model_selection/build_selection_dataset.py. El objetivo es identificar qué 
+4 arquitecturas ofrecen el mayor rendimiento de base
 antes de ajustarlas sobre el N18 completo (Pasos 4 y 5).
 
 Todos los modelos se entrenan con los mismos hiperparámetros: partición
@@ -51,7 +51,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 RANDOM_SEED = 42
 MAX_LENGTH  = 512
-THRESHOLD   = 0.3   # umbral fijo para la selección (sin ajuste por clase)
+THRESHOLD   = 0.3
 
 
 class MultiLabelDataset(torch.utils.data.Dataset):
@@ -171,9 +171,6 @@ def main():
         report_to="none",
     )
 
-    # Binary Cross-Entropy estándar: se obtiene por defecto de
-    # AutoModelForSequenceClassification con problem_type="multi_label_classification",
-    # sin necesidad de una función de pérdida personalizada.
     trainer = Trainer(
         model=model,
         args=training_args,

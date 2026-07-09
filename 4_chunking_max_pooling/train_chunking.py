@@ -2,11 +2,7 @@
 """
 Ajuste fino de los modelos Transformer clínicos para la clasificación
 multietiqueta del subgrupo N18, mediante segmentación (chunks de 512 tokens
-con solapamiento de 128) y agregación por Max Pooling (Sección 4.4).
-
-Se utiliza la función de pérdida Binary Cross-Entropy (BCE) estándar, obtenida
-por defecto de AutoModelForSequenceClassification con
-problem_type="multi_label_classification".
+con solapamiento de 128) y agregación por Max Pooling.
 
 Modelos entrenados en este paso:
   - michiyasunaga/BioLinkBERT-large
@@ -225,9 +221,6 @@ def main():
         fp16=torch.cuda.is_available(),
     )
 
-    # Binary Cross-Entropy estándar (sin función de pérdida personalizada):
-    # la proporciona por defecto AutoModelForSequenceClassification con
-    # problem_type="multi_label_classification".
     trainer = Trainer(
         model=model,
         args=training_args,

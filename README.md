@@ -1,6 +1,7 @@
 # Codificación automática ICD-10-CM — Subgrupo ERC (N18)
 
-Repositorio de reproducibilidad del pipeline experimental descrito en el Trabajo Fin de Grado *"Sistema de Codificación Automática ICD-10-CM en Grupos de Riesgo CMS-HCC"* (Universidad de León, 2026).
+Repositorio de reproducibilidad del pipeline experimental descrito en el Trabajo Fin de Grado *"Sistema de codificación automática ICD-10-CM para
+grupo de riesgo Enfermedad Renal Crónica"* (Universidad de León, 2026).
 
 Los experimentos se centran en la clasificación multietiqueta del subgrupo **Enfermedad Renal Crónica (ERC) N18** de ICD-10-CM (7 códigos: N18.1–N18.6, N18.9) a partir de notas de alta clínicas de **MIMIC-IV**.
 
@@ -27,7 +28,7 @@ Los experimentos se centran en la clasificación multietiqueta del subgrupo **En
 El acceso a MIMIC-IV requiere una cuenta acreditada de PhysioNet. **Este repositorio no incluye ningún dato.**
 
 1. Crear una cuenta en [physionet.org](https://physionet.org).
-2. Completar los cursos CITI requeridos y firmar el acuerdo de uso de datos.
+2. Completar los cursos CITI "Data or Specimens Only Research" y "Conflicts of Interest", y firmar el acuerdo de uso de datos.
 3. Descargar MIMIC-IV (v2.2 o posterior) desde [physionet.org/content/mimiciv](https://physionet.org/content/mimiciv/).
 4. Del archivo descargado solo se necesitan dos ficheros:
    - `hosp/diagnoses_icd.csv.gz` — códigos ICD por ingreso.
@@ -99,7 +100,7 @@ icd10-n18-classification/
 │
 ├── 4_chunking_max_pooling/
 │   ├── README.md
-│   └── train_chunking.py            ← segmentación + Max Pooling (BCE estándar)
+│   └── train_chunking.py            ← segmentación + Max Pooling
 │
 ├── 5_summarization/
 │   ├── README.md
@@ -141,13 +142,13 @@ python 1_preprocessing/preprocess.py \
 
 ### Paso 2 — Evaluación con LLM sobre los 13 grupos de riesgo HCC
 
-Ver [2_llm_hcc_evaluation/README.md](2_llm_hcc_evaluation/README.md). **Este paso no usa ninguna API de LLM**: genera lotes de texto para copiar y pegar manualmente en un chat temporal de gemini.google.com (por motivos de cumplimiento normativo, Sección 4.1.3 de la memoria), y puntúa después las respuestas pegadas de vuelta.
+Ver [2_llm_hcc_evaluation/README.md](2_llm_hcc_evaluation/README.md). **Este paso no usa ninguna API de LLM**: genera lotes de texto para copiar y pegar manualmente en un chat temporal de gemini.google.com (por motivos de cumplimiento normativo), y puntúa después las respuestas pegadas de vuelta.
 
 ```bash
 python 2_llm_hcc_evaluation/build_batches.py \
     --data_csv   data/processed/diagnoses_icd10.csv \
     --output_dir results/llm/batches/ \
-    --group      enfermedad_renal_cronica \
+    --group      chronic_kidney_disease \
     --strategy   specific
 ```
 
@@ -253,13 +254,14 @@ Todos los experimentos con Transformer se ejecutaron en un clúster HPC (SLURM) 
 
 ## 6. Resultados
 
-Cada carpeta contiene en su propio README las tablas de resultados detalladas de la sección correspondiente de la memoria:
+Cada carpeta contiene en su propio README las tablas de resultados detalladas:
 
-- [2_llm_hcc_evaluation](2_llm_hcc_evaluation/README.md) — Jaccard por grupo HCC, Gemini 2.5 Flash vs. Gemini 3 Pro (Sección 5.1).
-- [3_model_selection](3_model_selection/README.md) — ranking completo de los 25 modelos (Anexo B).
-- [4_chunking_max_pooling](4_chunking_max_pooling/README.md) — métricas globales y por código, segmentación + Max Pooling (Sección 5.3).
-- [5_summarization](5_summarization/README.md) — calidad ROUGE de los resúmenes y comparativa Max Pooling vs. resúmenes (Secciones 5.4 y 5.5).
-- [6_classical_baseline](6_classical_baseline/README.md) — mejores resultados TF-IDF/BM25/BM25+ (Sección 5.6).
+- [2_llm_hcc_evaluation](2_llm_hcc_evaluation/README.md) — Jaccard por grupo HCC, Gemini 2.5 Flash vs. Gemini 3 Pro.
+- [3_model_selection](3_model_selection/README.md) — ranking completo de los 25 modelos.
+- [4_chunking_max_pooling](4_chunking_max_pooling/README.md) — métricas globales y por código, segmentación + Max Pooling.
+- [5_summarization](5_summarization/README.md) — calidad ROUGE de los resúmenes y comparativa Max Pooling vs. resúmenes.
+- [6_classical_baseline](6_classical_baseline/README.md) — mejores resultados TF-IDF/BM25/BM25+.
+- [7_explainability](7_explainability/README.md) — varianza en la estabilidad de los spans en función de la concentración de evidencia.
 
 ### Resumen — mejor F1-weighted por enfoque (conjunto de test N18, 4.670 notas)
 
@@ -278,7 +280,7 @@ Si utilizas este código o estos resultados en tu trabajo, cita por favor:
 ```bibtex
 @thesis{defrancisco2026icd10,
   author  = {de Francisco Rodríguez, Gonzalo},
-  title   = {Sistema de Codificación Automática {ICD-10-CM} en Grupos de Riesgo {CMS-HCC}},
+  title   = {Sistema de codificación automática ICD-10-CM para grupo de riesgo Enfermedad Renal Crónica},
   school  = {Universidad de León},
   year    = {2026},
   type    = {Trabajo Fin de Grado}
@@ -287,9 +289,10 @@ Si utilizas este código o estos resultados en tu trabajo, cita por favor:
 
 ### Referencias clave
 
-- Johnson et al. (2023). MIMIC-IV. *Scientific Data*, 10, 1. DOI: 10.1038/s41597-022-01899-x
-- Yasunaga et al. (2022). LinkBERT. *ACL 2022*.
+- Johnson et al. (2023). MIMIC-IV. *Scientific Data*.
+- Yasunaga et al. (2022). BioLinkBERT. *ACL 2022*.
 - Gu et al. (2021). PubMedBERT. *ACL 2021*.
 - Lewis et al. (2020). RoBERTa-PM-M3-Voc (bio-lm). *ClinicalNLP Workshop 2020*.
+- Peng et al. (2019). BlueBERT. *ACL 2019*.
+- Google DeepMind (2025). MedGemma. [Disponible aquí](https://developers.google.com/health-ai-developer-foundations/medgemma).
 - Sundararajan et al. (2017). Integrated Gradients. *ICML 2017*.
-- Lin (2004). ROUGE. *ACL 2004 Workshop*.

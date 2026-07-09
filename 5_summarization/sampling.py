@@ -7,9 +7,9 @@ Selecciona 1.000 notas del dataset N18 completo reproduciendo la distribución
 multietiqueta real de cada código. Los códigos raros (frecuencia < 1 %, en la
 práctica solo N18.1) se sobremuestrean hasta un mínimo de MIN_RARE muestras
 para garantizar su cobertura, lo que explica que la proporción de N18.1 en la
-muestra (2,3 %) sea superior a su proporción en el dataset completo (0,4 %,
-véase Tabla 4.4). El resto de la muestra se completa con
-`iterative_train_test_split` sobre las notas restantes.
+muestra (2,3 %) sea superior a su proporción en el dataset completo (0,4 %). 
+El resto de la muestra se completa con `iterative_train_test_split` 
+sobre las notas restantes.
 
 Uso:
     python 5_summarization/sampling.py \

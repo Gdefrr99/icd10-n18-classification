@@ -1,10 +1,9 @@
 # Paso 4 — Segmentación + Max Pooling
 
-Ajusta los 4 modelos Transformer seleccionados sobre el dataset N18 completo (23.358 notas) mediante:
+Ajusta los 4 modelos Transformer seleccionados en el paso 3 sobre el dataset N18 completo (23.358 notas) mediante:
 
 - **Segmentación (chunking)**: cada nota se divide en fragmentos solapados de 512 tokens (128 de solapamiento).
 - **Herencia de etiquetas**: cada fragmento hereda todas las etiquetas de la nota a la que pertenece.
-- **Función de pérdida**: Binary Cross-Entropy (BCE) estándar, obtenida por defecto de `AutoModelForSequenceClassification` con `problem_type="multi_label_classification"`.
 - **Max Pooling**: en inferencia, el logit máximo entre todos los fragmentos de una nota se usa como logit a nivel de documento.
 - **Umbrales de decisión**: se evalúan 0,4 (mayor recall) y 0,6 (mayor precisión).
 
@@ -17,7 +16,7 @@ Ajusta los 4 modelos Transformer seleccionados sobre el dataset N18 completo (23
 | BlueBERT-pubmed-mimic-large-uncased | `bionlp/bluebert_pubmed_mimic_uncased_L-24_H-1024_A-16` |
 | PubMedBERT_abstract | `microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract` |
 
-> **Despliegue**: `PubMedBERT_abstract` con umbral 0,6 y Max Pooling es el modelo de la pipeline de segmentación integrado en [icd10_system](https://github.com/Gdefrr99/icd10_system).
+> **Despliegue**: `PubMedBERT_abstract` con umbral 0,6 y Max Pooling es el modelo seleccionado para el pipeline de segmentación integrado en [icd10_system](https://github.com/Gdefrr99/icd10_system).
 
 ## Hiperparámetros
 
@@ -58,8 +57,6 @@ python 4_chunking_max_pooling/train_chunking.py \
     --no_chunking \
     --thresholds 0.4 0.6
 ```
-
-> **Nota sobre la pipeline de resumen**: `BioLinkBERT-large` con umbral 0,4, entrenado sobre los resúmenes de MedGemma-27B-it, es el modelo de la pipeline de resumen integrado en [icd10_system](https://github.com/Gdefrr99/icd10_system).
 
 ## Resultados (Sección 5.3 de la memoria)
 

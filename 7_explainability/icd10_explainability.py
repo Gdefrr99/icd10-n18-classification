@@ -5,21 +5,21 @@ Módulo de explicabilidad ICD-10-CM N18.x — Noise Tunnel + Gradientes Integrad
 =================================================================================
 Predice qué códigos ICD-10-CM N18.x están presentes en una nota clínica y
 extrae los fragmentos de texto (evidencia) que sustentan cada predicción,
-junto con su puntuación de atribución normalizada (Sección 4.7 de la memoria).
+junto con su puntuación de atribución normalizada.
 
 Método: Noise Tunnel + Gradientes Integrados (SmoothGrad-IG) vía Captum.
   - NoiseTunnel promedia las atribuciones sobre NT_SAMPLES perturbaciones
     gaussianas de los embeddings, reduciendo la varianza de IG (Smilkov et
     al., 2017).
-  - La agregación por dimensión de embedding usa la suma con signo (no la
-    norma L2), preservando la dirección de la atribución: los valores
+  - La agregación por dimensión de embedding usa la suma con signo, 
+    preservando la dirección de la atribución: los valores
     positivos indican evidencia de apoyo, los negativos evidencia contraria.
   - El número de spans mostrados depende de la confianza del modelo
     (véanse CONF_HIGH / CONF_MED en la sección de configuración).
 
 Modelo utilizado en la memoria: RoBERTa-large-pubmed-mimic3-Voc-hf entrenado
-sobre notas resumidas por MedGemma-27B-it, con umbral de decisión 0,6
-(Sección 4.7.3). El módulo es compatible con cualquier modelo de la familia
+sobre notas resumidas por MedGemma-27B-it, con umbral de decisión 0,6. 
+El módulo es compatible con cualquier modelo de la familia
 BERT/RoBERTa entrenado con los scripts de este repositorio.
 
 Dependencias:
@@ -58,7 +58,6 @@ DEFAULT_MODEL_DIR = "./trained_RoBERTa-large-pubmed-mimic3-Voc-hf"
 LABELS = ["N181", "N182", "N183", "N184", "N185", "N186", "N189"]
 
 # Umbrales por clase (deben coincidir con thresholds_per_class del entrenamiento)
-# THRESHOLDS: dict[str, float] = {cls: 0.6 if cls == "N189" else 0.4 for cls in LABELS}
 THRESHOLDS: dict[str, float] = {cls: 0.6 for cls in LABELS}
 
 # Descripciones para la interfaz HTML
@@ -791,82 +790,3 @@ def analyze_note(text: str) -> dict:
     result_codes.sort(key=lambda x: x["conf"], reverse=True)
 
     return {"codes": result_codes}
-
-
-# ══════════════════════════════════════════════════════════════════
-# EJEMPLO DE USO
-# ══════════════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-
-    # ── Cargar modelo ────────────────────────────────────────────
-    # Para BioLinkBERT:
-    # load_model("./perclass_0.4_N189_0.6_BioLinkBERT-large/trained_BioLinkBERT-large")
-    load_model(DEFAULT_MODEL_DIR)
-
-    # ── VERIFICACIÓN IMPORTANTE ──────────────────────────────────
-    # Antes de usar en producción, verifica que el orden de LABELS
-    # coincide con mlb.classes_ del entrenamiento. Imprime:
-    #
-    #   import joblib
-    #   mlb = joblib.load("mlb.pkl")   # si lo guardaste
-    #   print(list(mlb.classes_))
-    #
-    # El orden debe ser idéntico a la lista LABELS al inicio de este archivo.
-
-    # ── Nota clínica de ejemplo ──────────────────────────────────
-#     sample_note = """
-# DISCHARGE SUMMARY
-
-# Patient: 68-year-old male with type 2 diabetes mellitus and hypertension.
-# Admission date: 14/03/2025.
-
-# Chief complaint: Routine nephrology follow-up with worsening renal function.
-
-# History of present illness:
-# The patient has a 12-year history of type 2 diabetes mellitus, poorly controlled
-# (HbA1c 9.8% at last visit), with progressive diabetic nephropathy. Current
-# laboratory results show a serum creatinine of 3.4 mg/dL and an eGFR of
-# 18 mL/min/1.73m², consistent with chronic kidney disease stage 4. He also
-# presents with hyperkalemia (K+ 5.9 mEq/L) and metabolic acidosis.
-
-# He has a long history of essential hypertension managed with amlodipine and
-# losartan. Urinalysis shows 3+ proteinuria (albumin-to-creatinine ratio 850 mg/g).
-
-# Assessment:
-# 1. Chronic kidney disease stage 4 due to diabetic nephropathy — nephrology
-#    follow-up, dietary protein restriction, and preparation for renal replacement
-#    therapy initiation within the next 6-12 months.
-# 2. Hyperkalemia — dietary counselling, low-potassium diet.
-# 3. Type 2 diabetes mellitus — adjustment of insulin regimen.
-# 4. Essential hypertension — continue current antihypertensive therapy.
-
-# Plan: Review in 4 weeks. Vascular surgery referral for arteriovenous fistula
-# creation in anticipation of hemodialysis.
-#     """.strip()
-
-#     sample_note = """
-# Mr. [UNK] is a male patient with a history of HFrEF (LVEF ~30%), CAD s/p CABG and PCI, moderate tricuspid regurgitation, right ventricular dysfunction, moderate pulmonary hypertension, paroxysmal atrial fibrillation on apixaban, stage III CKD (baseline Cr 2.0-2.1), cerebrovascular disease, and metastatic melanoma on pembrolizumab, who presented with worsening dyspnea on exertion (DOE) and volume overload. His symptoms were exacerbated by self-reduction of torsemide and high fluid intake. He was admitted for IV diuresis. During admission, he was found to be volume overloaded with bibasilar crackles, elevated JVP (20 cm) with positive hepatojugular reflux, and BNP >10K. His creatinine increased from 2.1 to 2.7, likely due to diuretic use, and improved to 2.2 upon transition to oral torsemide. Mild hyperkalemia (K 5.7) was noted and managed by stopping potassium supplementation and increasing torsemide dose. Troponin was minimally elevated (0.03-0.04), attributed to renal insufficiency and decompensated heart failure. Pembrolizumab was held previously due to diarrhea, elevated LFTs, and worsening renal function. Cardiac biomarkers showed normal CK-MB. He has a history of severe emphysema, GERD, hypertension, hyperlipidemia, BPH, and histoplasmosis. He experienced a fall resulting in a scalp laceration. Discharge weight was 55.6 kg (122.57 lb). Discharge creatinine was 2.2. Discharge medications include torsemide 40 mg daily, apixaban 2.5 mg BID, amiodarone 200 mg daily, aspirin 81 mg daily, potassium chloride 40 mEq daily, and others. He is discharged home with follow-up instructions.
-#     """.strip()
-
-#     sample_note = """
-# The patient is a male with a history of HFrEF (35%), CAD s/p CABG and PCI, moderate tricuspid regurgitation, right ventricular dysfunction, moderate pulmonary hypertension, paroxysmal atrial fibrillation, stage III CKD, cerebrovascular disease, and metastatic melanoma. He was admitted for acute on chronic systolic heart failure exacerbation, presenting with volume overload and pleural effusion, likely triggered by lower left lobe pneumonia. Initial management included aggressive IV diuresis and treatment of pneumonia with Zosyn for 5 days. He was transferred to the cardiology floor, continued diuresis with transition to oral torsemide 60 mg BID, and his oxygen requirement decreased from high flow to [UNK] NC. He was discharged on torsemide 60 mg PO BID, maintaining euvolemia. He has chronic anemia (Hgb 10.3-10.6) and thrombocytopenia (platelets 100s). His baseline creatinine is 2.0-2.1, remaining stable during admission (discharge Cr 2.0). He is on amiodarone and apixaban for atrial fibrillation. Due to hypotension and CKD, afterload reducing agents, neurohormonal blockade agents, and mineralocorticoid receptor antagonists were held. He was restarted on rosuvastatin 5 mg daily for CAD. His discharge condition is stable, ambulatory with assistance, and requiring supplemental oxygen ([UNK] NC) likely related to resolving pneumonia. Discharge disposition is to an extended care facility.
-#     """.strip()
-
-    sample_note = """
-The patient is a male with a history of gout, type II diabetes, and nephrolithiasis who presented with a two-day history of left ankle and knee pain accompanied by subjective fevers. Examination revealed warm, swollen left ankle and knee joints without erythema, with painful knee range of motion. Initial labs showed elevated WBC (11.0), elevated BUN (32), elevated creatinine (1.8), elevated CRP (253), and elevated uric acid (8.5). Joint fluid analysis from the left knee showed slightly cloudy yellow fluid with a high WBC count (97% polymorphonuclear leukocytes), moderate needle-shaped negatively birefringent crystals, consistent with gout. X-rays of the left ankle and knee showed degenerative changes and effusion, but no acute fracture. The patient was treated with IV fluids, morphine for pain, and a 5-day course of prednisone 40mg daily for the acute gout flare. His creatinine improved to 1.2 prior to discharge. Discharge diagnoses include acute gout flare and type II diabetes. The patient was discharged home with a tapering course of prednisone and instructions for follow-up.
-    """.strip()
-
-    # ── Ejecutar análisis ────────────────────────────────────────
-    results = analyze_note(sample_note)
-
-    # ── Mostrar resultados ───────────────────────────────────────
-    print("\n" + "═" * 60)
-    print("RESULTADOS DEL ANÁLISIS")
-    print("═" * 60)
-    print(json.dumps(results, indent=2, ensure_ascii=False))
-
-    # El diccionario `results` tiene exactamente la estructura que espera
-    # la interfaz HTML (campo `codes` con id, desc, conf, conf_tier, cat, spans).
-    # El campo `conf_tier` ("high"/"medium"/"low") puede usarse en el HTML
-    # para mostrar un aviso visual cuando la confianza es baja o media.

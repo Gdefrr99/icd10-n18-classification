@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Resumen clínico de notas de alta mediante MedGemma-27B-it (Sección 4.5.3).
+Resumen clínico de notas de alta mediante MedGemma-27B-it.
 
 Requiere:
   - pip install -r requirements_generative.txt
@@ -43,9 +43,6 @@ SYSTEM_PROMPT = (
     "- Be no longer than 400 words to ensure it fits within a 512-token processing window.\n"
     "Do NOT assign ICD-10 codes yourself. Only summarize."
 )
-
-# El prompt del sistema se mantiene en inglés: es el idioma de las notas de
-# MIMIC-IV y de los modelos de resumen evaluados (Anexo A.3 de la memoria).
 
 GENERATION_KWARGS = dict(
     max_new_tokens=512,

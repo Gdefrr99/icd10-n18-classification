@@ -1,13 +1,13 @@
 # Paso 6 — Línea base clásica (TF-IDF / BM25 / BM25+)
 
-Reproduce la línea base clásica multietiqueta de la Sección 4.6 de la memoria, para contextualizar el rendimiento de los modelos Transformer y cuantificar la ventaja del modelado semántico contextual.
+Reproduce la línea base clásica multietiqueta para contextualizar el rendimiento de los modelos Transformer y cuantificar la ventaja del modelado semántico contextual.
 
 ## Método
 
 - **Representaciones**: TF-IDF (unigramas y unigramas+bigramas), BM25, BM25+
 - **Clasificadores**: Regresión Logística y LinearSVC mediante descomposición One-vs-Rest (OvR)
 - **Tamaños de vocabulario explorados**: 36K (unigramas completo), 50K, 53K, 103K, 930K (uni+bigramas completo)
-- **Preprocesado adicional de texto** (Sección 4.6.2): conversión a minúsculas, lematización con scispaCy `en_core_sci_sm`, eliminación de stop words estándar y clínicas, eliminación de tokens de 1-2 caracteres y cadenas numéricas puras
+- **Preprocesado adicional de texto**: conversión a minúsculas, lematización con scispaCy `en_core_sci_sm`, eliminación de stop words estándar y clínicas, eliminación de tokens de 1-2 caracteres y cadenas numéricas puras
 
 ## Requisitos
 

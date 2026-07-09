@@ -49,7 +49,7 @@ python 5_summarization/summarize_medgemma.py \
 
 El script guarda checkpoints cada 50 notas y reanuda automáticamente si se interrumpe.
 
-### Prompt de resumen (Anexo A.3)
+### Prompt de resumen
 
 El prompt del sistema instruye al modelo para producir un resumen **abstractivo**:
 - Conserva toda la información diagnósticamente relevante (diagnósticos, síntomas, procedimientos, analíticas).
@@ -72,9 +72,9 @@ python 5_summarization/build_summarized_splits.py \
 
 Ver [Paso 4](../4_chunking_max_pooling/README.md) con el flag `--no_chunking`, apuntando `--data_dir` al directorio generado en el paso anterior.
 
-> **Despliegue**: `BioLinkBERT-large`, umbral 0,4, entrenado sobre los resúmenes de MedGemma-27B-it, es el modelo de la pipeline de resumen integrado en [icd10_system](https://github.com/Gdefrr99/icd10_system).
+> **Despliegue**: `BioLinkBERT-large` con umbral 0,4 y entrenado sobre los resúmenes de MedGemma-27B-it es el modelo seleccionado para el pipeline de resumen integrado en [icd10_system](https://github.com/Gdefrr99/icd10_system).
 
-## Resultados (Secciones 5.4 y 5.5 de la memoria)
+## Resultados
 
 ### Calidad del resumen — métricas ROUGE (1.000 muestras)
 
@@ -100,4 +100,4 @@ Ver [Paso 4](../4_chunking_max_pooling/README.md) con el flag `--no_chunking`, a
 | F1 macro | 0,7233 | PubM | 0,6 | 0,6905 | BioL | 0,4 |
 | F1 weighted | 0,7516 | PubM | 0,6 | 0,7758 | BioL | 0,4 |
 
-El resumen clínico mejora sistemáticamente la precisión y el F1-weighted; la segmentación + Max Pooling domina en recall y F1-macro, al poder localizar evidencia en cualquier fragmento de la nota completa.
+El resumen clínico mejora la precisión y el F1-weighted; la segmentación + Max Pooling domina en recall y F1-macro, al poder localizar evidencia en cualquier fragmento de la nota completa.
